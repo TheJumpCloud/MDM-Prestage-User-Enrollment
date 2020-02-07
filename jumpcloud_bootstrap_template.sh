@@ -799,7 +799,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                     echo "$(date "+%Y-%m-%dT%H:%M:%S") Passwords Match"
                     passMatch="Passwords match"
                 else
+                    # Passwords do not match, reset passCheck counter
                     echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a match"
+                    passCheck=0
                     VALID_PASSWORD='False'
                 fi 
 
