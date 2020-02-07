@@ -703,6 +703,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
         Sleep 2
 
+        # set the number of password pass checks to zero
+        passCheck=0
+
         VALID_PASSWORD='False'
 
         while [ "$VALID_PASSWORD" == "False" ]; do
@@ -747,7 +750,6 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a lower case letter" >>"$DEP_N_DEBUG"
                 LOWER='\n* LOWER CASE'
                 VALID_PASSWORD='False'
-
             fi
 
             # Special character check
@@ -762,7 +764,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
             fi
 
-            # Number  check
+            # Number check
             numberCheck='[0-9]'
             if [[ $password =~ $numberCheck ]]; then
                 NUMBER=''
@@ -774,7 +776,35 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
             fi
 
-            COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER' \n\n TRY AGAIN'
+            # only display password match confirmation after all password is valid
+            if [[ $passCheck == 0 ]]; then
+                COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER' \n\n TRY AGAIN'
+            else
+                # Dialogue returned with password match status
+                COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER''$passMatch' \n\n TRY AGAIN'
+            fi
+
+            if [[ $VALID_PASSWORD == 'True' ]]; then
+                passCheck=$((passCheck + 1))
+                passwordMatch=$(launchctl asuser "$uid" /usr/bin/osascript -e '
+                Tell application "System Events" 
+                    with timeout of 1800 seconds 
+                        display dialog "CONFIRM PASSWORD:\n--------------------------------------------------------------\n" with title "CONFIRM A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result 
+                    end timeout
+                end tell' 2>/dev/null)
+
+                # match Check
+                passMatch="Passwords do not match"
+                if [[ $password == "$passwordMatch" ]]; then
+                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Passwords Match"
+                    passMatch="Passwords match"
+                else
+                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a match"
+                    VALID_PASSWORD='False'
+                fi 
+
+                COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER''$passMatch' \n\n TRY AGAIN'
+            fi
 
         done
 
