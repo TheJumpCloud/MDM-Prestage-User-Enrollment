@@ -1003,6 +1003,49 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for group switch :${groupTimeoutCounter} of 90" >>"$DEP_N_DEBUG"
     done
 
+    ## Check for system details and log user agent to JumpCloud
+    sysSearch=$(curl -X GET \
+                -A 'ZT-PUE' \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -H 'x-api-key: '${APIKEY}'' \
+                "https://console.jumpcloud.com/api/systems/${systemID}"
+            )
+
+    # Get details about the current system, log details
+    regexSerial='("serialNumber":")([^"]*)(",)'
+    regexName='("hostname":")([^"]*)(",)'
+    regexServAcct='("hasServiceAccount":)([^"]*)(,)'
+    if [[ $sysSearch =~ $regexSerial ]]; then
+        sysSearchRawSerial="${BASH_REMATCH[2]}"
+    fi
+    if [[ $sysSearch =~ $regexName ]]; then
+        sysSearchRawName="${BASH_REMATCH[2]}"
+    fi
+    if [[ $sysSearch =~ $regexServAcct ]]; then
+        sysSearchRawServAcct="${BASH_REMATCH[2]}"
+    fi
+
+    # Print out system info to debug log
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): System Enrollment Complete:" >> "$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): =============== ENROLLMENT DETAILS ==============" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Serial Number: $sysSearchRawSerial" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Hostname: $sysSearchRawName" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+    
+    # user Agent
+    CLIENT=$(basename "$0")
+    VERSION="3.0"
+    SETTINGS=$(curl -s -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}")
+    REGEX='\"ORG_ID\":\"([a-zA-Z0-9_]+)\"'
+    if [[ ${SETTINGS} =~ $REGEX ]]; then
+        ORG_ID="${BASH_REMATCH[1]}"
+    fi
+    #echo "${ORG_ID}"
+    USER_AGENT="${CLIENT}\\${VERSION} (ORG_ID: ${ORG_ID})"
+    curl -s -A "${USER_AGENT}" -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}"
+
     FINISH_TITLE="All Done"
 
     echo "Command: MainTitle: $FINISH_TITLE" >>"$DEP_N_LOG"
