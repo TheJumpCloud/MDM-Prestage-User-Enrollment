@@ -703,6 +703,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
         Sleep 2
 
+        # set the number of password pass checks to zero
+        passCheck=0
+
         VALID_PASSWORD='False'
 
         while [ "$VALID_PASSWORD" == "False" ]; do
@@ -747,7 +750,6 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a lower case letter" >>"$DEP_N_DEBUG"
                 LOWER='\n* LOWER CASE'
                 VALID_PASSWORD='False'
-
             fi
 
             # Special character check
@@ -762,7 +764,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
             fi
 
-            # Number  check
+            # Number check
             numberCheck='[0-9]'
             if [[ $password =~ $numberCheck ]]; then
                 NUMBER=''
@@ -774,7 +776,37 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
             fi
 
-            COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER' \n\n TRY AGAIN'
+            # only display password match confirmation after all password is valid
+            if [[ $passCheck == 0 ]]; then
+                COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER' \n\n TRY AGAIN'
+            else
+                # Dialogue returned with password match status
+                COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER''$passMatch' \n\n TRY AGAIN'
+            fi
+
+            if [[ $VALID_PASSWORD == 'True' ]]; then
+                passCheck=$((passCheck + 1))
+                passwordMatch=$(launchctl asuser "$uid" /usr/bin/osascript -e '
+                Tell application "System Events" 
+                    with timeout of 1800 seconds 
+                        display dialog "CONFIRM PASSWORD:\n--------------------------------------------------------------\n" with title "CONFIRM A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result 
+                    end timeout
+                end tell' 2>/dev/null)
+
+                # match Check
+                passMatch="Passwords do not match"
+                if [[ $password == "$passwordMatch" ]]; then
+                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Passwords Match"
+                    passMatch="Passwords match"
+                else
+                    # Passwords do not match, reset passCheck counter
+                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a match"
+                    passCheck=0
+                    VALID_PASSWORD='False'
+                fi 
+
+                COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER''$passMatch' \n\n TRY AGAIN'
+            fi
 
         done
 
@@ -970,6 +1002,49 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         fi
         echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for group switch :${groupTimeoutCounter} of 90" >>"$DEP_N_DEBUG"
     done
+
+    ## Check for system details and log user agent to JumpCloud
+    sysSearch=$(curl -X GET \
+                -A 'ZT-PUE' \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -H 'x-api-key: '${APIKEY}'' \
+                "https://console.jumpcloud.com/api/systems/${systemID}"
+            )
+
+    # Get details about the current system, log details
+    regexSerial='("serialNumber":")([^"]*)(",)'
+    regexName='("hostname":")([^"]*)(",)'
+    regexServAcct='("hasServiceAccount":)([^"]*)(,)'
+    if [[ $sysSearch =~ $regexSerial ]]; then
+        sysSearchRawSerial="${BASH_REMATCH[2]}"
+    fi
+    if [[ $sysSearch =~ $regexName ]]; then
+        sysSearchRawName="${BASH_REMATCH[2]}"
+    fi
+    if [[ $sysSearch =~ $regexServAcct ]]; then
+        sysSearchRawServAcct="${BASH_REMATCH[2]}"
+    fi
+
+    # Print out system info to debug log
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): System Enrollment Complete:" >> "$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): =============== ENROLLMENT DETAILS ==============" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Serial Number: $sysSearchRawSerial" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Hostname: $sysSearchRawName" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+    
+    # user Agent report
+    CLIENT="mdm-zero-touch"
+    VERSION="3.0"
+    SETTINGS=$(curl -s -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}")
+    REGEX='\"ORG_ID\":\"([a-zA-Z0-9_]+)\"'
+    if [[ ${SETTINGS} =~ $REGEX ]]; then
+        ORG_ID="${BASH_REMATCH[1]}"
+    fi
+    #echo "${ORG_ID}"
+    USER_AGENT="${CLIENT}\\${VERSION} (ORG_ID: ${ORG_ID})"
+    curl -s -A "${USER_AGENT}" -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}"
 
     FINISH_TITLE="All Done"
 
