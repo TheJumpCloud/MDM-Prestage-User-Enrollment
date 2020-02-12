@@ -1034,8 +1034,8 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
     
-    # user Agent
-    CLIENT=$(basename "$0")
+    # user Agent report
+    CLIENT="mdm-zero-touch"
     VERSION="3.0"
     SETTINGS=$(curl -s -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}")
     REGEX='\"ORG_ID\":\"([a-zA-Z0-9_]+)\"'
@@ -1044,7 +1044,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     fi
     #echo "${ORG_ID}"
     USER_AGENT="${CLIENT}\\${VERSION} (ORG_ID: ${ORG_ID})"
-    curl -s -A "${USER_AGENT}" -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}"
+    curl -s -A "${USER_AGENT}" -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}"
 
     FINISH_TITLE="All Done"
 
