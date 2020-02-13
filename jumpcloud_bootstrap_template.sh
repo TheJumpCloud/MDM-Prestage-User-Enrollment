@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.0 | See the CHANGELOG.md for version information
+#       Version 3.0.0 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -1036,14 +1036,14 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     
     # user Agent report
     CLIENT="mdm-zero-touch"
-    VERSION="3.0"
+    VERSION="3.0.0"
     SETTINGS=$(curl -s -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}")
     REGEX='\"ORG_ID\":\"([a-zA-Z0-9_]+)\"'
     if [[ ${SETTINGS} =~ $REGEX ]]; then
         ORG_ID="${BASH_REMATCH[1]}"
     fi
     #echo "${ORG_ID}"
-    USER_AGENT="${CLIENT}\\${VERSION} (ORG_ID: ${ORG_ID})"
+    USER_AGENT=USER_AGENT="${CLIENT}//${VERSION}"
     curl -s -A "${USER_AGENT}" -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}"
 
     FINISH_TITLE="All Done"
