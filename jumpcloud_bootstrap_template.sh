@@ -337,8 +337,8 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
 
     DEPenrollmentGroupAdd=$(
         curl -s \
-            -A "${USER_AGENT}" \
             -X 'POST' \
+            -A "${USER_AGENT}" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json' \
             -H "Date: ${now}" \
@@ -1060,8 +1060,8 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     # User Agent Report
     SETTINGS=$(curl \
         -s \
-        -A "${USER_AGENT}" \
         -X GET https://console.jumpcloud.com/api/settings \
+        -A "${USER_AGENT}" \
         -H "Accept: application/json" \
         -H "Content-Type: application/json" \
         -H "x-api-key: ${JCAPI_KEY}"
@@ -1072,12 +1072,12 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     fi
     #echo "${ORG_ID}"
     curl \
-    -s \
-    -A "${USER_AGENT}" \
-    -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/json" \
-    -H "x-api-key: ${JCAPI_KEY}"
+        -s \
+        -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} \
+        -A "${USER_AGENT}" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -H "x-api-key: ${JCAPI_KEY}"
 
     FINISH_TITLE="All Done"
 
