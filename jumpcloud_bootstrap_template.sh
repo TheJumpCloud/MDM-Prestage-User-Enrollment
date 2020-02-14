@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.0 | See the CHANGELOG.md for version information
+#       Version 3.1.0 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -144,6 +144,18 @@ DEP_N_GATE_INSTALLJC="/var/tmp/com.jumpcloud.gate.installjc"
 DEP_N_GATE_SYSADD="/var/tmp/com.jumpcloud.gate.sysadd"
 DEP_N_GATE_UI="/var/tmp/com.jumpcloud.gate.ui"
 DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# END Script Variables                                                        ~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#*******************************************************************************
+# Pre login bootstrap workflow                                                 *
+#*******************************************************************************
+
+CLIENT="mdm-zero-touch"
+VERSION="3.1.0"
+USER_AGENT="JumpCloud/${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # END Script Variables                                                        ~
@@ -326,6 +338,7 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
     DEPenrollmentGroupAdd=$(
         curl -s \
             -X 'POST' \
+            -A "${USER_AGENT}" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json' \
             -H "Date: ${now}" \
@@ -343,6 +356,7 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
     DEPenrollmentGroupGet=$(
         curl \
             -X 'GET' \
+            -A "${USER_AGENT}" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json' \
             -H "Date: ${now}" \
@@ -385,6 +399,7 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
         DEPenrollmentGroupAdd=$(
             curl -s \
                 -X 'POST' \
+                -A "${USER_AGENT}" \
                 -H 'Content-Type: application/json' \
                 -H 'Accept: application/json' \
                 -H "Date: ${now}" \
@@ -401,6 +416,7 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
         DEPenrollmentGroupGet=$(
             curl \
                 -X 'GET' \
+                -A "${USER_AGENT}" \
                 -H 'Content-Type: application/json' \
                 -H 'Accept: application/json' \
                 -H "Date: ${now}" \
@@ -546,6 +562,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         userSearch=$(
             curl -s \
                 -X 'POST' \
+                -A "${USER_AGENT}" \
                 -H 'Content-Type: application/json' \
                 -H 'Accept: application/json' \
                 -H "x-api-key: ${APIKEY}" \
@@ -584,6 +601,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             userSearch=$(
                 curl -s \
                     -X 'POST' \
+                    -A "${USER_AGENT}" \
                     -H 'Content-Type: application/json' \
                     -H 'Accept: application/json' \
                     -H "x-api-key: ${APIKEY}" \
@@ -848,6 +866,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     userUpdate=$(
         curl -s \
             -X 'PUT' \
+            -A "${USER_AGENT}" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json' \
             -H "x-api-key: ${APIKEY}" \
@@ -897,6 +916,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     userBind=$(
         curl -s \
             -X 'POST' \
+            -A "${USER_AGENT}" \
             -H 'Accept: application/json' \
             -H 'Content-Type: application/json' \
             -H 'x-api-key: '${APIKEY}'' \
@@ -908,6 +928,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     userBindCheck=$(
         curl -s \
             -X 'GET' \
+            -A "${USER_AGENT}" \
             -H 'Accept: application/json' \
             -H 'Content-Type: application/json' \
             -H 'x-api-key: '${APIKEY}'' \
@@ -956,6 +977,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     curl \
         -X 'POST' \
+        -A "${USER_AGENT}" \
         -H 'Content-Type: application/json' \
         -H 'Accept: application/json' \
         -H 'x-api-key: '${APIKEY}'' \
@@ -966,6 +988,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     curl \
         -X 'POST' \
+        -A "${USER_AGENT}" \
         -H 'Content-Type: application/json' \
         -H 'Accept: application/json' \
         -H 'x-api-key: '${APIKEY}'' \
@@ -1005,7 +1028,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     ## Check for system details and log user agent to JumpCloud
     sysSearch=$(curl -X GET \
-                -A 'ZT-PUE' \
+                -A "${USER_AGENT}" \
                 -H 'Accept: application/json' \
                 -H 'Content-Type: application/json' \
                 -H 'x-api-key: '${APIKEY}'' \
@@ -1034,17 +1057,27 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
     
-    # user Agent report
-    CLIENT="mdm-zero-touch"
-    VERSION="3.0"
-    SETTINGS=$(curl -s -X GET https://console.jumpcloud.com/api/settings -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}")
+    # User Agent Report
+    SETTINGS=$(curl \
+        -s \
+        -X GET https://console.jumpcloud.com/api/settings \
+        -A "${USER_AGENT}" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -H "x-api-key: ${JCAPI_KEY}"
+    )
     REGEX='\"ORG_ID\":\"([a-zA-Z0-9_]+)\"'
     if [[ ${SETTINGS} =~ $REGEX ]]; then
         ORG_ID="${BASH_REMATCH[1]}"
     fi
     #echo "${ORG_ID}"
-    USER_AGENT="${CLIENT}\\${VERSION} (ORG_ID: ${ORG_ID})"
-    curl -s -A "${USER_AGENT}" -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} -H "Accept: application/json" -H "Content-Type: application/json" -H "x-api-key: ${JCAPI_KEY}"
+    curl \
+        -s \
+        -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} \
+        -A "${USER_AGENT}" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -H "x-api-key: ${JCAPI_KEY}"
 
     FINISH_TITLE="All Done"
 
