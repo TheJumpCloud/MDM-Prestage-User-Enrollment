@@ -1,6 +1,18 @@
 # Changelog
 
-## 3.0
+## 3.1.0
+
+### RELEASE DATE
+
+February 13, 2020
+
+#### RELEASE NOTES
+
+The MDM Prestage User Enrollment workflow will prompt users to verify their passwords during enrollment. After a user configures a password with the correct complexity requirements a second prompt will ask that the user verify their password. If both password values match, that password will become the enrollment user's JumpCloud password.
+
+The addition of a user agent header is passed through each JumpCloud curl request.
+
+## 3.0.0
 
 ### RELEASE DATE
 
@@ -14,7 +26,7 @@ Given the changes to the overall flow of the script, the user configuration modu
 
 A few lines debugging lines were added to help identify where and when the user was located during the enrollment process.
 
-## 2.1
+## 2.1.0
 
 ### RELEASE DATE
 
@@ -30,7 +42,7 @@ The bootstrap script is now caffeinated to prevent systems from falling asleep d
 
 The user module password prompt should now timeout after thirty minutes rather than the default two minutes. In previous versions of the bootstrap script, the dialogue box would open a new password prompt every two minutes if the enrollment user did not enter their password. This is generally avoidable since the enrollment user must click continue before proceeding to the password prompt. If an enrollment user walked away at this stage, the script should wait thirty minutes before timing out and checking for a password.
 
-## 2.0
+## 2.0.0
 
 ### RELEASE DATE
 
@@ -46,7 +58,7 @@ Added stages to the jumpcloud_bootstrap_template.sh script, should any stage fai
 
 Updated DEPNotify to 1.1.5.
 
-## 1.1
+## 1.1.0
 
 ### RELEASE DATE
 
