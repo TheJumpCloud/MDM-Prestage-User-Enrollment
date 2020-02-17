@@ -155,7 +155,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 
 CLIENT="mdm-zero-touch"
 VERSION="3.1.0"
-USER_AGENT="JumpCloud/${CLIENT}/${VERSION}"
+USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # END Script Variables                                                        ~
