@@ -87,7 +87,7 @@ class text_PUE(unittest.TestCase):
 
     def test_f1(self):
         '''Test Self ID'''
-        string = "self_ID="
+        string = "SELF_ID="
         regex = "^(%s)(\"(.*?)\")$" % string
         with open(text_PUE.script, "r") as file:
             match_list = []
