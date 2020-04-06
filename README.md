@@ -18,4 +18,4 @@ During enrollment, existing or pending JumpCloud users are asked to prove their 
 
 The MDM-Prestage-User-Enrollment workflow is designed to empower admins to automate their enrollment process.
 
-Continue to [the project wiki to start](https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/Getting-Started) building your own Zero-Touch workflow.
+Continue to [the project wiki to start](https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/Getting-Started) building your own Zero-Touch workflow. Check out our [webinar on MDM Prestage User Enrollment](https://jumpcloud.com/resources/using-jumpcloud-for-zero-touch-mdm-enrollment) for more information.
