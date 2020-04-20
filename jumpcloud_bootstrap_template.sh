@@ -570,22 +570,22 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 "https://console.jumpcloud.com/api/search/systemusers"
         )
         #debug
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") DEBUG USER SEARCH $userSearch" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): DEBUG USER SEARCH $userSearch" >>"$DEP_N_DEBUG"
         regex='totalCount"*.*,"results"'
         if [[ $userSearch =~ $regex ]]; then
             userSearchRaw="${BASH_REMATCH[@]}"
         fi
         #debug
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
         totalCount=$(echo $userSearchRaw | cut -d ":" -f2 | cut -d "," -f1)
 
         sleep 1
 
         # switch to checking active users and increment search step int
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") active? $search_active, step $search_step, totalCount $totalCount" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): active? $search_active, step $search_step, totalCount $totalCount" >>"$DEP_N_DEBUG"
         if [[ $search_active == false && $search_step -eq 0 && "$totalCount" != "1" ]]; then
             search_step=$((search_step + 1))
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") no pending users found. Searching for active users. Search step: $search_step" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): no pending users found. Searching for active users. Search step: $search_step" >>"$DEP_N_DEBUG"
             sec='"activated":true'
             search_active=true
             echo "$(date "+%Y-%m-%dT%H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
@@ -613,7 +613,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 userSearchRaw="${BASH_REMATCH[@]}"
             fi
             #debug
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
             totalCount=$(echo $userSearchRaw | cut -d ":" -f2 | cut -d "," -f1)
         fi
 
@@ -635,7 +635,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             echo "Status: Account Not Found" >>"$DEP_N_LOG"
             # search_step=$((search_step + 1))
             rm $DEP_N_REGISTER_DONE >/dev/null 2>&1
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") Try again search step: $search_step" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Try again search step: $search_step" >>"$DEP_N_DEBUG"
             echo "Command: ContinueButtonRegister: Try Again" >>"$DEP_N_LOG"
 
             sleep 1
@@ -660,7 +660,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             search_step=$((0))
             search_active=false
             sec='"activated":false'
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") no users found entering loop again search step: $search_step" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): no users found entering loop again search step: $search_step" >>"$DEP_N_DEBUG"
         fi
 
     done
@@ -673,9 +673,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             pass_path="update_required"
         fi
         userID="${BASH_REMATCH[@]}"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") JumpCloud userID found userID: "$userID >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud userID found userID: "$userID >>"$DEP_N_DEBUG"
     else
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") No JumpCloud userID found." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): No JumpCloud userID found." >>"$DEP_N_DEBUG"
         exit 1
     fi
 
@@ -740,9 +740,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             lengthCheck='.{'$minlength',100}'
             if [[ $password =~ $lengthCheck ]]; then
                 LENGTH=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password meets length requirements"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password meets length requirements"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not meet length requirements" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password does not meet length requirements" >>"$DEP_N_DEBUG"
                 LENGTH='\n* LENGTH'
                 VALID_PASSWORD='False'
             fi
@@ -751,9 +751,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             upperCheck='[[:upper:]]+'
             if [[ $password =~ $upperCheck ]]; then
                 UPPER=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a upper case letter"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password contains a upper case letter"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a upper case letter" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password does not contain a upper case letter" >>"$DEP_N_DEBUG"
                 UPPER='\n* UPPER CASE'
                 VALID_PASSWORD='False'
 
@@ -763,9 +763,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             lowerCheck='[[:lower:]]+'
             if [[ $password =~ $lowerCheck ]]; then
                 LOWER=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a lower case letter"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password contains a lower case letter"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a lower case letter" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password does not contain a lower case letter" >>"$DEP_N_DEBUG"
                 LOWER='\n* LOWER CASE'
                 VALID_PASSWORD='False'
             fi
@@ -774,9 +774,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             specialCharCheck='[!@#$%^&*(),.?":{}|<>]'
             if [[ $password =~ $specialCharCheck ]]; then
                 SPECIAL=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a special character"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password contains a special character"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contains a special character" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password does not contains a special character" >>"$DEP_N_DEBUG"
                 SPECIAL='\n* SPECIAL CHARACTER'
                 VALID_PASSWORD='False'
 
@@ -786,9 +786,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             numberCheck='[0-9]'
             if [[ $password =~ $numberCheck ]]; then
                 NUMBER=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a number"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password contains a number"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a number" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password does not contain a number" >>"$DEP_N_DEBUG"
                 NUMBER='\n* NUMBER'
                 VALID_PASSWORD='False'
 
@@ -814,11 +814,11 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 # match Check
                 passMatch="Passwords do not match"
                 if [[ $password == "$passwordMatch" ]]; then
-                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Passwords Match"
+                    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Passwords Match"
                     passMatch="Passwords match"
                 else
                     # Passwords do not match, reset passCheck counter
-                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a match"
+                    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Password does not contain a match"
                     passCheck=0
                     VALID_PASSWORD='False'
                 fi 
@@ -1016,44 +1016,74 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     groupTimeoutCounter='0'
 
+    # Get last line of the JumpCloud Agent
     lstLine=$(tail -1 /var/log/jcagent.log)
     regexLine='([0-9][0-9])/([0-9][0-9])/([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
     if [[ $lstLine =~ $regexLine ]]; then
         lstTime=${BASH_REMATCH[0]}
     fi
     now=$(date "+%y/%m/%d %H:%M:%S")
-    echo "Current System Time       : $now" >>"$DEP_N_DEBUG"
-    echo "JCAgent Last Logged Time  : $lstTime" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Current System Time       : $now" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): JCAgent Last Log Time     : $lstTime" >>"$DEP_N_DEBUG"
     nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
     jclogEpoch=$(date -j -f "%y/%m/%d %T" "${lstTime}" +'%s')
-    echo "Current System Epoch Time : $nowEpoch" >>"$DEP_N_DEBUG"
-    echo "Last JCAgent Epoch Time   : $jclogEpoch" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Current System Epoch Time : $nowEpoch" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Last JCAgent Epoch Time   : $jclogEpoch" >>"$DEP_N_DEBUG"
     epochDiff=$(( (nowEpoch - jclogEpoch) ))
-    echo "Difference between logs is: $epochDiff seconds" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Difference between logs is: $epochDiff seconds" >>"$DEP_N_DEBUG"
 
-    while [[ -z "${groupTakeOverCheck}" ]]; do
+
+    # while [[ -z "${groupTakeOverCheck}" ]]; do
+    while [[ $epochDiff -le 180 ]]; do
         Sleep 1
         groupSwitchCheck=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
         groupTakeOverCheck=$(echo ${groupSwitchCheck} | grep "Processing user updates")
-        groupTimeoutCounter=$((${groupTimeoutCounter} + 1))
-        if [[ ${groupTimeoutCounter} -eq 90 ]]; then
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Error during JumpCloud agent local account takeover" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): JCAgent.log: ${groupSwitchCheck}" >>"$DEP_N_DEBUG"
-            while [[ $epochDiff -le 180 ]]; do
-                Sleep 1
                 now=$(date "+%y/%m/%d %H:%M:%S")
                 nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
                 epochDiff=$(( (nowEpoch - jclogEpoch) ))
-                echo "Difference between is: $epochDiff seconds" >>"$DEP_N_DEBUG"
-            done
-            echo "Rebooting JCAgent, log timeout" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for log sync, JCAgent last log was: $epochDiff seconds ago" >>"$DEP_N_DEBUG"
+        if [[ $epochDiff -eq 90 ]]; then
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud not reporting local account takeover" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Restarting JumpCloud Agent" >>"$DEP_N_DEBUG"
             launchctl stop com.jumpcloud.darwin-agent
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for JCAgent..." >>"$DEP_N_DEBUG"
+            sleep 5
         fi
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for group switch :${groupTimeoutCounter} of 90" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): LogLines grouptakeovr: $groupTakeOverCheck" >>"$DEP_N_DEBUG"
+        if [[ -z $groupTakeOverCheck ]]; then
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): BOOGIE WOOGIE" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%dT%H:%M:%S"): IT WORKED" >>"$DEP_N_DEBUG"
+            break
+        fi
     done
+    # done
 
-    ## Check for system details and log user agent to JumpCloud
+        # echo "$(date "+%Y-%m-%dT%H:%M:%S"): LogLines grouptakeovr: $groupTakeOverCheck" >>"$DEP_N_DEBUG"
+
+
+    # while [[ -z "${groupTakeOverCheck}" ]]; do
+    #     Sleep 1
+    #     groupSwitchCheck=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
+    #     groupTakeOverCheck=$(echo ${groupSwitchCheck} | grep "Processing user updates")
+    #     groupTimeoutCounter=$((${groupTimeoutCounter} + 1))
+    #     if [[ ${groupTimeoutCounter} -eq 90 ]]; then
+    #         echo "$(date "+%Y-%m-%dT%H:%M:%S"): Error during JumpCloud agent local account takeover" >>"$DEP_N_DEBUG"
+    #         echo "$(date "+%Y-%m-%dT%H:%M:%S"): JCAgent.log: ${groupSwitchCheck}" >>"$DEP_N_DEBUG"
+    #         while [[ $epochDiff -le 180 ]]; do
+    #             Sleep 1
+    #             now=$(date "+%y/%m/%d %H:%M:%S")
+    #             nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+    #             epochDiff=$(( (nowEpoch - jclogEpoch) ))
+    #             echo "Difference between is: $epochDiff seconds" >>"$DEP_N_DEBUG"
+    #         done
+    #         echo "Rebooting JCAgent, log timeout" >>"$DEP_N_DEBUG"
+    #         launchctl stop com.jumpcloud.darwin-agent
+    #     fi
+    #     echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for group switch :${groupTimeoutCounter} of 90" >>"$DEP_N_DEBUG"
+    #     echo "$(date "+%Y-%m-%dT%H:%M:%S"): LogLines grouptakeovr: $groupTakeOverCheck" >>"$DEP_N_DEBUG"
+    # done
+
+    # Check for system details and log user agent to JumpCloud
     sysSearch=$(curl -X GET \
                 -A "${USER_AGENT}" \
                 -H 'Accept: application/json' \
