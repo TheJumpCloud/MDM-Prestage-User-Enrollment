@@ -974,7 +974,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud agent local account takeover complete" >>"$DEP_N_DEBUG"
 
     # Remove from DEP_ENROLLMENT_GROUP and add to DEP_POST_ENROLLMENT_GROUP
-
+    removeGrp=$(
     curl \
         -X 'POST' \
         -A "${USER_AGENT}" \
@@ -983,9 +983,10 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         -H 'x-api-key: '${APIKEY}'' \
         -d '{"op": "remove","type": "system","id": "'${systemID}'"}' \
         "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members"
-
+    )
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): $removeGrp" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): Removed from DEP_ENROLLMENT_GROUP_ID: $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
-
+    addGrp=$(
     curl \
         -X 'POST' \
         -A "${USER_AGENT}" \
@@ -995,6 +996,8 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         -d '{"op": "add","type": "system","id": "'${systemID}'"}' \
         "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_POST_ENROLLMENT_GROUP_ID}/members"
 
+    )
+    echo "$(date "+%Y-%m-%dT%H:%M:%S"): $addGrp" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%dT%H:%M:%S"): Added to from DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
 
     echo "Status: Applying Finishing Touches" >>"$DEP_N_LOG"
@@ -1013,6 +1016,21 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     groupTimeoutCounter='0'
 
+    lstLine=$(tail -1 /var/log/jcagent.log)
+    regexLine='([0-9][0-9])/([0-9][0-9])/([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
+    if [[ $lstLine =~ $regexLine ]]; then
+        lstTime=${BASH_REMATCH[0]}
+    fi
+    now=$(date "+%y/%m/%d %H:%M:%S")
+    echo "Current System Time       : $now" >>"$DEP_N_DEBUG"
+    echo "JCAgent Last Logged Time  : $lstTime" >>"$DEP_N_DEBUG"
+    nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+    jclogEpoch=$(date -j -f "%y/%m/%d %T" "${lstTime}" +'%s')
+    echo "Current System Epoch Time : $nowEpoch" >>"$DEP_N_DEBUG"
+    echo "Last JCAgent Epoch Time   : $jclogEpoch" >>"$DEP_N_DEBUG"
+    epochDiff=$(( (nowEpoch - jclogEpoch) ))
+    echo "Difference between logs is: $epochDiff seconds" >>"$DEP_N_DEBUG"
+
     while [[ -z "${groupTakeOverCheck}" ]]; do
         Sleep 1
         groupSwitchCheck=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
@@ -1021,9 +1039,18 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         if [[ ${groupTimeoutCounter} -eq 90 ]]; then
             echo "$(date "+%Y-%m-%dT%H:%M:%S"): Error during JumpCloud agent local account takeover" >>"$DEP_N_DEBUG"
             echo "$(date "+%Y-%m-%dT%H:%M:%S"): JCAgent.log: ${groupSwitchCheck}" >>"$DEP_N_DEBUG"
-            exit 1
+            while [[ $epochDiff -le 180 ]]; do
+                Sleep 1
+                now=$(date "+%y/%m/%d %H:%M:%S")
+                nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+                epochDiff=$(( (nowEpoch - jclogEpoch) ))
+                echo "Difference between is: $epochDiff seconds" >>"$DEP_N_DEBUG"
+            done
+            echo "Rebooting JCAgent, log timeout" >>"$DEP_N_DEBUG"
+            launchctl stop com.jumpcloud.darwin-agent
         fi
         echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for group switch :${groupTimeoutCounter} of 90" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): LogLines grouptakeovr: $groupTakeOverCheck" >>"$DEP_N_DEBUG"
     done
 
     ## Check for system details and log user agent to JumpCloud
