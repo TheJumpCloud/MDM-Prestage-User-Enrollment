@@ -2,6 +2,10 @@
 
 ![welcome_image](https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/images/MDM%20Prestage%20User%20Enrollment%20Banner%20(1).png)
 
+<p align="center">
+  <img src="https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/images/MDM%20Prestage%20User%20Enrollment%20workflow.png" width="600">
+</p>
+
 The MDM-Prestage-User-Enrollment workflow is designed to minimize work for JumpCloud admins. JumpCloud admins can leverage Apple Automated Enrollment, MDM and JumpCloud to provision devices during device enrollment.
 
 With the aim to Make Work Happen&trade;, the MDM-Prestage-User-Enrollment workflow offers JumpCloud and MDM admins a true zero-touch enrollment experience.
