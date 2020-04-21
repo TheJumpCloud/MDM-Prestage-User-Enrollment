@@ -1080,6 +1080,8 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         sleep 10
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Quitting Enrollment" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the decrypt user: $DECRYPT_USER" >>"$DEP_N_DEBUG"
+        sysadminctl -deleteUser $DECRYPT_USER >>"$DEP_N_DEBUG" 2>&1
         echo "Command: Quit: "Enrollment Failed, check the debug logs in /var/tmp/"" >> $DEP_N_LOG
         launchctl unload "/Library/LaunchDaemons/${DAEMON}"
         rm -- "$0"
