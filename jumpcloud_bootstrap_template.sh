@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.0 | See the CHANGELOG.md for version information
+#       Version 3.1.1 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -154,7 +154,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.0"
+VERSION="3.1.1"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1050,11 +1050,11 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         # if the log is empty continue while loop
         if [[ -z $groupTakeOverCheck ]]; then
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for log sync, JCAgent last log was: $epochDiff seconds ago" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): JCAgent last line: $lstLine" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): JCAgent last line: $lstLine" >>"$DEP_N_DEBUG"
         else
             now=$(date "+%y/%m/%d %H:%M:%S")
             # log found, break out of the while loop
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): Log Synced! System Time: $now" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Log Synced! User Updates Complete $now" >>"$DEP_N_DEBUG"
             # echo "$(date "+%Y-%m-%d %H:%M:%S"): $groupTakeOverCheck" >>"$DEP_N_DEBUG"
             break
         fi
@@ -1067,6 +1067,23 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
             sleep 5
         fi
     done
+
+    # Check for errors
+    now=$(date "+%y/%m/%d %H:%M:%S")
+    nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+    epochDiff=$(( (nowEpoch - jclogEpoch) ))
+    if [[ $epochDiff -gt 180 ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Error syncing JCAgent logs exiting Enrollment..." >>"$DEP_N_DEBUG"
+        echo "Command: MainTitle: Enrollment Failed" >>"$DEP_N_LOG"
+        echo "Command: MainText: Enrollment Encountered an Error" >>"$DEP_N_LOG"
+        echo "Status: Check the debug logs" >>"$DEP_N_LOG"
+        sleep 10
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Quitting Enrollment" >>"$DEP_N_DEBUG"
+        echo "Command: Quit: "Enrollment Failed, check the debug logs in /var/tmp/"" >> $DEP_N_LOG
+        launchctl unload "/Library/LaunchDaemons/${DAEMON}"
+        rm -- "$0"
+    fi
 
     # Check for system details and log user agent to JumpCloud
     sysSearch=$(curl -X GET \
