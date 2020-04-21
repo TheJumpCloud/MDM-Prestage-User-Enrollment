@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.0 | See the CHANGELOG.md for version information
+#       Version 3.1.1 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -154,7 +154,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.0"
+VERSION="3.1.1"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -188,7 +188,7 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
     # Wait for active user session
     FINDER_PROCESS=$(pgrep -l "Finder")
     until [ "$FINDER_PROCESS" != "" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Finder process not found. User session not active." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process not found. User session not active." >>"$DEP_N_DEBUG"
         sleep 1
         FINDER_PROCESS=$(pgrep -l "Finder")
     done
@@ -263,14 +263,14 @@ EOF
     # EOF
 
     # Installs JumpCloud agent
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): User $ACTIVE_USER is logged in, installing JC" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): User $ACTIVE_USER is logged in, installing JC" >>"$DEP_N_DEBUG"
     installer -pkg /tmp/jumpcloud-agent.pkg -target /
 
     # Validate JumpCloud agent install
     JCAgentConfPath='/opt/jc/jcagent.conf'
 
     while [ ! -f "$JCAgentConfPath" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for JC Agent to install" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for JC Agent to install" >>"$DEP_N_DEBUG"
         sleep 1
     done
 
@@ -281,7 +281,7 @@ EOF
     fi
 
     while [ -z "$systemKey" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for systemKey to register" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for systemKey to register" >>"$DEP_N_DEBUG"
         sleep 1
         conf="$(cat /opt/jc/jcagent.conf)"
         if [[ $conf =~ $regex ]]; then
@@ -290,7 +290,7 @@ EOF
 
     done
 
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud agent installed!"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud agent installed!"
 
     Sleep 1
 
@@ -318,14 +318,14 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
         systemKey="${BASH_REMATCH[@]}"
     fi
 
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): systemKey = $systemKey " >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): systemKey = $systemKey " >>"$DEP_N_DEBUG"
 
     regex='[a-zA-Z0-9]{24}'
     if [[ $systemKey =~ $regex ]]; then
         systemID="${BASH_REMATCH[@]}"
     fi
 
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): systemID = $systemID " >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): systemID = $systemID " >>"$DEP_N_DEBUG"
 
     now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
 
@@ -373,24 +373,24 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
 
     # variable to ensure system time is set correctly, once during this loop
     timeSet=false
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Expected systemID: ${systemID} to be a member of group: ${DEP_ENROLLMENT_GROUP_ID}" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Expected systemID: ${systemID} to be a member of group: ${DEP_ENROLLMENT_GROUP_ID}" >>"$DEP_N_DEBUG"
     while [[ -z $groupCheck ]]; do
         # log note
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for system to be added to the DEP ENROLLMENT GROUP" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for system to be added to the DEP ENROLLMENT GROUP" >>"$DEP_N_DEBUG"
         echo "Adding System to JumpCloud Enrollment Group" >>"$DEP_N_LOG"
         sleep 5
 
         # if system is 10.12 or newer, this command should work to set the system time
         MacOSMinorVersion=$(sw_vers -productVersion | cut -d '.' -f 2)
         if [[ MacOSMinorVersion -ge 12 && $timeSet == false ]]; then
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Setting the correct system time" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Setting the correct system time" >>"$DEP_N_DEBUG"
             sntp -sS $NTP_SERVER
             # only run this once
             timeSet=true
         fi
 
         # attempt to add system to enrollment group
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Attempting to add system to enrollment group again" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Attempting to add system to enrollment group again" >>"$DEP_N_DEBUG"
         now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
         signstr="POST /api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members HTTP/1.1\ndate: ${now}"
         # create the signature with updated time and string
@@ -409,7 +409,7 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
         )
 
         # check if the system is in the enrollment group
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Checking Status" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Checking Status" >>"$DEP_N_DEBUG"
         now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
         signstr_check="GET /api/v2/systems/${systemID}/memberof HTTP/1.1\ndate: ${now}"
         signature_check=$(printf "$signstr_check" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
@@ -428,7 +428,7 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
     done
 
     # Set the receipt for the system add gate. The system was added to JumpCloud at this stage
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): System added, killing caffeinate process at PID: ${caffeinatePID}" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): System added, killing caffeinate process at PID: ${caffeinatePID}" >>"$DEP_N_DEBUG"
     kill $caffeinatePID
     touch $DEP_N_GATE_SYSADD
     echo "System added to JumpCloud Enrollment Group" >>"$DEP_N_LOG"
@@ -436,28 +436,28 @@ fi
 
 # User interaction steps - check if user has completed these steps.
 if [[ ! -f $DEP_N_GATE_UI ]]; then
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Begin User Interaction steps" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Begin User Interaction steps" >>"$DEP_N_DEBUG"
     # Caffeinate this script
     caffeinate -d -i -m -u &
     caffeinatePID=$!
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): User Interaction steps, starting caffeinate process at PID: ${caffeinatePID}" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): User Interaction steps, starting caffeinate process at PID: ${caffeinatePID}" >>"$DEP_N_DEBUG"
     # reboot check
     FINDER_PROCESS=$(pgrep -l "Finder")
     until [ "$FINDER_PROCESS" != "" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Finder process not found. User session not active." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process not found. User session not active." >>"$DEP_N_DEBUG"
         sleep 1
         FINDER_PROCESS=$(pgrep -l "Finder")
     done
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): User session active." >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): User session active." >>"$DEP_N_DEBUG"
     # check if the DEPNotify process is running
     process=$(echo | ps aux | grep "\bDEPNotify\.app")
     if [[ -z $process ]]; then
         ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Expected DEPNotify.app to be in process list, process not found. Launching DEPNotify as $ACTIVE_USER" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Expected DEPNotify.app to be in process list, process not found. Launching DEPNotify as $ACTIVE_USER" >>"$DEP_N_DEBUG"
         sudo -u "$ACTIVE_USER" open -a "$DEP_N_APP" --args -path "$DEP_N_LOG" -fullScreen
         process=$(echo | ps aux | grep "\bDEPNotify\.app")
         sleep 2
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): DEPNotify should be running on process: $process" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): DEPNotify should be running on process: $process" >>"$DEP_N_DEBUG"
     fi
     # Waiting for DECRYPT_USER_ID to be bound to system
     echo "Status: Pulling Security Settings from JumpCloud" >>"$DEP_N_LOG"
@@ -465,7 +465,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
 
     while [ -z "$DECRYPT_USER_ID" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for DECRYPT_USER_ID for user $DECRYPT_USER" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for DECRYPT_USER_ID for user $DECRYPT_USER" >>"$DEP_N_DEBUG"
         sleep 1
         DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
     done
@@ -519,10 +519,10 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     sleep 1
 
     while [ ! -f "$DEP_N_REGISTER_DONE" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for user to fill in information." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for user to fill in information." >>"$DEP_N_DEBUG"
         sleep 1
     done
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): User Selection is: $SELF_ID" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): User Selection is: $SELF_ID" >>"$DEP_N_DEBUG"
     if [[ $SELF_ID == "CE" ]]; then
         CompanyEmail=$(defaults read $DEP_N_USER_INPUT_PLIST "Enter Your Company Email Address")
     elif [[ $SELF_ID == "PE" ]]; then
@@ -550,14 +550,14 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     LOCATED_ACCOUNT='False'
 
     while [ "$LOCATED_ACCOUNT" == "False" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Performing Search with the following parameters: " >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Activate status: $sec" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Using Secret: $injection" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Performing Search with the following parameters: " >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Activate status: $sec" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Using Secret: $injection" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
 
         userSearch=$(
             curl -s \
@@ -570,32 +570,32 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 "https://console.jumpcloud.com/api/search/systemusers"
         )
         #debug
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") DEBUG USER SEARCH $userSearch" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USER SEARCH $userSearch" >>"$DEP_N_DEBUG"
         regex='totalCount"*.*,"results"'
         if [[ $userSearch =~ $regex ]]; then
             userSearchRaw="${BASH_REMATCH[@]}"
         fi
         #debug
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
         totalCount=$(echo $userSearchRaw | cut -d ":" -f2 | cut -d "," -f1)
 
         sleep 1
 
         # switch to checking active users and increment search step int
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") active? $search_active, step $search_step, totalCount $totalCount" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): active? $search_active, step $search_step, totalCount $totalCount" >>"$DEP_N_DEBUG"
         if [[ $search_active == false && $search_step -eq 0 && "$totalCount" != "1" ]]; then
             search_step=$((search_step + 1))
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") no pending users found. Searching for active users. Search step: $search_step" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): no pending users found. Searching for active users. Search step: $search_step" >>"$DEP_N_DEBUG"
             sec='"activated":true'
             search_active=true
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Performing Search with the following parameters: " >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Activate status (should differ from): $sec" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Using Secret: $injection" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Performing Search with the following parameters: " >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Activate status (should differ from): $sec" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Using Secret: $injection" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
 
             # rerun the search:
             userSearch=$(
@@ -613,7 +613,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 userSearchRaw="${BASH_REMATCH[@]}"
             fi
             #debug
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
             totalCount=$(echo $userSearchRaw | cut -d ":" -f2 | cut -d "," -f1)
         fi
 
@@ -635,15 +635,15 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             echo "Status: Account Not Found" >>"$DEP_N_LOG"
             # search_step=$((search_step + 1))
             rm $DEP_N_REGISTER_DONE >/dev/null 2>&1
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") Try again search step: $search_step" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Try again search step: $search_step" >>"$DEP_N_DEBUG"
             echo "Command: ContinueButtonRegister: Try Again" >>"$DEP_N_LOG"
 
             sleep 1
             while [ ! -f "$DEP_N_REGISTER_DONE" ]; do
-                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for user to fill in information." >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for user to fill in information." >>"$DEP_N_DEBUG"
                 sleep 1
             done
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): User Selection is: $SELF_ID" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): User Selection is: $SELF_ID" >>"$DEP_N_DEBUG"
             if [[ $SELF_ID == "CE" ]]; then
                 CompanyEmail=$(defaults read $DEP_N_USER_INPUT_PLIST "Enter Your Company Email Address")
             elif [[ $SELF_ID == "PE" ]]; then
@@ -660,7 +660,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             search_step=$((0))
             search_active=false
             sec='"activated":false'
-            echo "$(date "+%Y-%m-%dT%H:%M:%S") no users found entering loop again search step: $search_step" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): no users found entering loop again search step: $search_step" >>"$DEP_N_DEBUG"
         fi
 
     done
@@ -673,9 +673,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             pass_path="update_required"
         fi
         userID="${BASH_REMATCH[@]}"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") JumpCloud userID found userID: "$userID >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud userID found userID: "$userID >>"$DEP_N_DEBUG"
     else
-        echo "$(date "+%Y-%m-%dT%H:%M:%S") No JumpCloud userID found." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): No JumpCloud userID found." >>"$DEP_N_DEBUG"
         exit 1
     fi
 
@@ -686,7 +686,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         echo "Status: Click SET PASSWORD" >>"$DEP_N_LOG"
         echo "Command: ContinueButton: SET PASSWORD" >>"$DEP_N_LOG"
         while [ ! -f "$DEP_N_DONE" ]; do
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for user to click Set Password." >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for user to click Set Password." >>"$DEP_N_DEBUG"
             sleep 1
         done
         ;;
@@ -694,7 +694,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         echo "Status: Click CONTINUE" >>"$DEP_N_LOG"
         echo "Command: ContinueButton: CONTINUE" >>"$DEP_N_LOG"
         while [ ! -f "$DEP_N_DONE" ]; do
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for user to click Continue." >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for user to click Continue." >>"$DEP_N_DEBUG"
             sleep 1
         done
         ;;
@@ -740,9 +740,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             lengthCheck='.{'$minlength',100}'
             if [[ $password =~ $lengthCheck ]]; then
                 LENGTH=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password meets length requirements"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password meets length requirements"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not meet length requirements" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not meet length requirements" >>"$DEP_N_DEBUG"
                 LENGTH='\n* LENGTH'
                 VALID_PASSWORD='False'
             fi
@@ -751,9 +751,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             upperCheck='[[:upper:]]+'
             if [[ $password =~ $upperCheck ]]; then
                 UPPER=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a upper case letter"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password contains a upper case letter"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a upper case letter" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not contain a upper case letter" >>"$DEP_N_DEBUG"
                 UPPER='\n* UPPER CASE'
                 VALID_PASSWORD='False'
 
@@ -763,9 +763,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             lowerCheck='[[:lower:]]+'
             if [[ $password =~ $lowerCheck ]]; then
                 LOWER=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a lower case letter"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password contains a lower case letter"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a lower case letter" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not contain a lower case letter" >>"$DEP_N_DEBUG"
                 LOWER='\n* LOWER CASE'
                 VALID_PASSWORD='False'
             fi
@@ -774,9 +774,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             specialCharCheck='[!@#$%^&*(),.?":{}|<>]'
             if [[ $password =~ $specialCharCheck ]]; then
                 SPECIAL=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a special character"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password contains a special character"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contains a special character" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not contains a special character" >>"$DEP_N_DEBUG"
                 SPECIAL='\n* SPECIAL CHARACTER'
                 VALID_PASSWORD='False'
 
@@ -786,9 +786,9 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             numberCheck='[0-9]'
             if [[ $password =~ $numberCheck ]]; then
                 NUMBER=''
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password contains a number"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password contains a number"
             else
-                echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a number" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not contain a number" >>"$DEP_N_DEBUG"
                 NUMBER='\n* NUMBER'
                 VALID_PASSWORD='False'
 
@@ -814,11 +814,11 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 # match Check
                 passMatch="Passwords do not match"
                 if [[ $password == "$passwordMatch" ]]; then
-                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Passwords Match"
+                    echo "$(date "+%Y-%m-%d %H:%M:%S"): Passwords Match"
                     passMatch="Passwords match"
                 else
                     # Passwords do not match, reset passCheck counter
-                    echo "$(date "+%Y-%m-%dT%H:%M:%S") Password does not contain a match"
+                    echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not contain a match"
                     passCheck=0
                     VALID_PASSWORD='False'
                 fi 
@@ -832,7 +832,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         echo "Command: ContinueButton: CONTINUE" >>"$DEP_N_LOG"
 
         while [ ! -f "$DEP_N_DONE" ]; do
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for user to click CONTINUE" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for user to click CONTINUE" >>"$DEP_N_DEBUG"
             sleep 1
         done
         ;;
@@ -899,9 +899,9 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     regex='[a-zA-Z0-9]{24}'
     if [[ $systemKey =~ $regex ]]; then
         systemID="${BASH_REMATCH[@]}"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud systemID found: "$systemID >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud systemID found: "$systemID >>"$DEP_N_DEBUG"
     else
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): No systemID found" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): No systemID found" >>"$DEP_N_DEBUG"
         exit 1
     fi
 
@@ -939,9 +939,9 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     if [[ $userBindCheck =~ $regex ]]; then
         userID="${BASH_REMATCH[@]}"
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud user "$userID "bound to systemID: "$systemID >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud user "$userID "bound to systemID: "$systemID >>"$DEP_N_DEBUG"
     else
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): $userID : $userBindCheck : $regex error JumpCloud user not bound to system" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): $userID : $userBindCheck : $regex error JumpCloud user not bound to system" >>"$DEP_N_DEBUG"
         exit 1
     fi
 
@@ -963,18 +963,18 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         accountTakeOverCheck=$(echo ${updateLog} | grep "User updates complete")
         logoutTimeoutCounter=$((${logoutTimeoutCounter} + 1))
         if [[ ${logoutTimeoutCounter} -eq 10 ]]; then
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Error during JumpCloud agent local account takeover" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): JCAgent.log: ${updateLog}" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Error during JumpCloud agent local account takeover" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): JCAgent.log: ${updateLog}" >>"$DEP_N_DEBUG"
             exit 1
         fi
     done
 
     echo "Status: System Account Configured" >>"$DEP_N_LOG"
 
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud agent local account takeover complete" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud agent local account takeover complete" >>"$DEP_N_DEBUG"
 
     # Remove from DEP_ENROLLMENT_GROUP and add to DEP_POST_ENROLLMENT_GROUP
-
+    removeGrp=$(
     curl \
         -X 'POST' \
         -A "${USER_AGENT}" \
@@ -983,9 +983,10 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         -H 'x-api-key: '${APIKEY}'' \
         -d '{"op": "remove","type": "system","id": "'${systemID}'"}' \
         "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members"
-
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Removed from DEP_ENROLLMENT_GROUP_ID: $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
-
+    )
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Removing Enrollment Group $removeGrp" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Removed from DEP_ENROLLMENT_GROUP_ID: $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+    addGrp=$(
     curl \
         -X 'POST' \
         -A "${USER_AGENT}" \
@@ -995,7 +996,9 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         -d '{"op": "add","type": "system","id": "'${systemID}'"}' \
         "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_POST_ENROLLMENT_GROUP_ID}/members"
 
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Added to from DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+    )
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Adding to Post Enrollment Group $addGrp" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Added to from DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
 
     echo "Status: Applying Finishing Touches" >>"$DEP_N_LOG"
 
@@ -1003,30 +1006,88 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     echo "Command: MainText: $FINISH_TEXT" >>"$DEP_N_LOG"
 
+    # Get JCAgent.log to ensure user updates have been processes on the system
     logLinesRaw=$(wc -l /var/log/jcagent.log)
-
     logLines=$(echo $logLinesRaw | head -n1 | awk '{print $1;}')
-
     groupSwitchCheck=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
-
     groupTakeOverCheck=$(echo ${groupSwitchCheck} | grep "User updates complete")
 
-    groupTimeoutCounter='0'
+    # Get current Time
+    now=$(date "+%y/%m/%d %H:%M:%S")
+    # Get last line of the JumpCloud Agent
+    lstLine=$(tail -1 /var/log/jcagent.log)
+    regexLine='([0-9][0-9])/([0-9][0-9])/([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
+    if [[ $lstLine =~ $regexLine ]]; then
+        # Get the time form the agent log
+        lstTime=${BASH_REMATCH[0]}
+    fi
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Current System Time       : $now" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): JCAgent Last Log Time     : $lstTime" >>"$DEP_N_DEBUG"
+    # convert to Epoch time
+    nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+    jclogEpoch=$(date -j -f "%y/%m/%d %T" "${lstTime}" +'%s')
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Current System Epoch Time : $nowEpoch" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Last JCAgent Epoch Time   : $jclogEpoch" >>"$DEP_N_DEBUG"
+    # get the difference in time
+    epochDiff=$(( (nowEpoch - jclogEpoch) ))
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Difference between logs is: $epochDiff seconds" >>"$DEP_N_DEBUG"
 
-    while [[ -z "${groupTakeOverCheck}" ]]; do
+    # Check the JCAgent log, it should check in under 180s
+    while [[ $epochDiff -le 180 ]]; do
+        # wait a second and update all the variables
         Sleep 1
         groupSwitchCheck=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
         groupTakeOverCheck=$(echo ${groupSwitchCheck} | grep "Processing user updates")
-        groupTimeoutCounter=$((${groupTimeoutCounter} + 1))
-        if [[ ${groupTimeoutCounter} -eq 90 ]]; then
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Error during JumpCloud agent local account takeover" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): JCAgent.log: ${groupSwitchCheck}" >>"$DEP_N_DEBUG"
-            exit 1
+        lstLine=$(tail -1 /var/log/jcagent.log)
+        regexLine='([0-9][0-9])/([0-9][0-9])/([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
+        if [[ $lstLine =~ $regexLine ]]; then
+            lstTime=${BASH_REMATCH[0]}
         fi
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for group switch :${groupTimeoutCounter} of 90" >>"$DEP_N_DEBUG"
+        jclogEpoch=$(date -j -f "%y/%m/%d %T" "${lstTime}" +'%s')
+                now=$(date "+%y/%m/%d %H:%M:%S")
+                nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+                epochDiff=$(( (nowEpoch - jclogEpoch) ))
+        # if the log is empty continue while loop
+        if [[ -z $groupTakeOverCheck ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for log sync, JCAgent last log was: $epochDiff seconds ago" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): JCAgent last line: $lstLine" >>"$DEP_N_DEBUG"
+        else
+            now=$(date "+%y/%m/%d %H:%M:%S")
+            # log found, break out of the while loop
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Log Synced! User Updates Complete $now" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): $groupTakeOverCheck" >>"$DEP_N_DEBUG"
+            break
+        fi
+        # if the time difference is greater than 90 seconds, restart the JumpCloud agent to begin logging again
+        if [[ $epochDiff -eq 90 ]]; then
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud not reporting local account takeover" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Restarting JumpCloud Agent" >>"$DEP_N_DEBUG"
+            launchctl stop com.jumpcloud.darwin-agent
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for JCAgent..." >>"$DEP_N_DEBUG"
+            sleep 5
+        fi
     done
 
-    ## Check for system details and log user agent to JumpCloud
+    # Check for errors
+    now=$(date "+%y/%m/%d %H:%M:%S")
+    nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
+    epochDiff=$(( (nowEpoch - jclogEpoch) ))
+    if [[ $epochDiff -gt 180 ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Error syncing JCAgent logs exiting Enrollment..." >>"$DEP_N_DEBUG"
+        echo "Command: MainTitle: Enrollment Failed" >>"$DEP_N_LOG"
+        echo "Command: MainText: Enrollment Encountered an Error" >>"$DEP_N_LOG"
+        echo "Status: Check the debug logs" >>"$DEP_N_LOG"
+        sleep 10
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Quitting Enrollment" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the decrypt user: $DECRYPT_USER" >>"$DEP_N_DEBUG"
+        sysadminctl -deleteUser $DECRYPT_USER >>"$DEP_N_DEBUG" 2>&1
+        echo "Command: Quit: "Enrollment Failed, check the debug logs in /var/tmp/"" >> $DEP_N_LOG
+        launchctl unload "/Library/LaunchDaemons/${DAEMON}"
+        rm -- "$0"
+    fi
+
+    # Check for system details and log user agent to JumpCloud
     sysSearch=$(curl -X GET \
                 -A "${USER_AGENT}" \
                 -H 'Accept: application/json' \
@@ -1050,12 +1111,12 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     fi
 
     # Print out system info to debug log
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): System Enrollment Complete:" >> "$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): =============== ENROLLMENT DETAILS ==============" >>"$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Serial Number: $sysSearchRawSerial" >>"$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Hostname: $sysSearchRawName" >>"$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): System Enrollment Complete:" >> "$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): =============== ENROLLMENT DETAILS ==============" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Serial Number: $sysSearchRawSerial" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Hostname: $sysSearchRawName" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
     
     # User Agent Report
     SETTINGS=$(curl \
@@ -1083,13 +1144,13 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     echo "Command: MainTitle: $FINISH_TITLE" >>"$DEP_N_LOG"
     echo "Status: Enrollment Complete" >>"$DEP_N_LOG"
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Status: Enrollment Complete" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Enrollment Complete" >>"$DEP_N_DEBUG"
 
     ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Waiting for ${ACTIVE_USER} user to logout... " >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for ${ACTIVE_USER} user to logout... " >>"$DEP_N_DEBUG"
     FINDER_PROCESS=$(pgrep -l "Finder")
     while [ "$FINDER_PROCESS" != "" ]; do
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Finder process found. Waiting until session end" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process found. Waiting until session end" >>"$DEP_N_DEBUG"
         sleep 1
         FINDER_PROCESS=$(pgrep -l "Finder")
     done
@@ -1112,32 +1173,32 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     # Delete enrollment users
     if [[ $DELETE_ENROLLMENT_USERS == true ]]; then
         # wait until welcome user is logged out
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Testing if ${ENROLLMENT_USER} user is logged out" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Testing if ${ENROLLMENT_USER} user is logged out" >>"$DEP_N_DEBUG"
         ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
         if [[ "${ACTIVE_USER}" == "${ENROLLMENT_USER}" ]]; then
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Logged in user is: ${ACTIVE_USER}, waiting until logout to continue" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Logged in user is: ${ACTIVE_USER}, waiting until logout to continue" >>"$DEP_N_DEBUG"
             FINDER_PROCESS=$(pgrep -l "Finder")
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): $FINDER_PROCESS" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): $FINDER_PROCESS" >>"$DEP_N_DEBUG"
             while [ "$FINDER_PROCESS" != "" ]; do
-                echo "$(date "+%Y-%m-%dT%H:%M:%S"): Finder process found. Waiting until session end" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process found. Waiting until session end" >>"$DEP_N_DEBUG"
                 sleep 1
                 FINDER_PROCESS=$(pgrep -l "Finder")
             done
         fi
         # given the case that the enrollment user was logged in previously, recheck the active user
         ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
-        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Logged in user is: ${ACTIVE_USER}" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Logged in user is: ${ACTIVE_USER}" >>"$DEP_N_DEBUG"
         if [[ "${ACTIVE_USER}" == "" || "${ACTIVE_USER}" != "${ENROLLMENT_USER}" ]]; then
             # delete the enrollment and decrypt user
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Deleting the first enrollment user: $ENROLLMENT_USER" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the first enrollment user: $ENROLLMENT_USER" >>"$DEP_N_DEBUG"
             sysadminctl -deleteUser $ENROLLMENT_USER >>"$DEP_N_DEBUG" 2>&1
-            echo "$(date "+%Y-%m-%dT%H:%M:%S"): Deleting the decrypt user: $DECRYPT_USER" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the decrypt user: $DECRYPT_USER" >>"$DEP_N_DEBUG"
             sysadminctl -deleteUser $DECRYPT_USER >>"$DEP_N_DEBUG" 2>&1
         fi
 
     fi
     # Clean up steps
-    echo "$(date "+%Y-%m-%dT%H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
     # Remove the LaunchDaemon file
     rm -rf "/Library/LaunchDaemons/${DAEMON}"
     # Clean up receipts

@@ -1,6 +1,8 @@
 # MDM-Prestage-User-Enrollment
 
-![welcome_image](https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/images/MDM%20Prestage%20User%20Enrollment%20Banner%20(1).png)
+<p align="center">
+  <img src="https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/images/MDM%20Prestage%20User%20Enrollment%20Banner%20(1).png" width="600">
+</p>
 
 The MDM-Prestage-User-Enrollment workflow is designed to minimize work for JumpCloud admins. JumpCloud admins can leverage Apple Automated Enrollment, MDM and JumpCloud to provision devices during device enrollment.
 
@@ -10,7 +12,9 @@ An implementation of the MDM-Prestage-User-Enrollment workflow allows JumpCloud 
 
 ## How does it work
 
-![how does it work](https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/images/MDM%20Prestage%20User%20Enrollment%20workflow.png)
+<p align="center">
+  <img src="https://github.com/TheJumpCloud/MDM-Prestage-User-Enrollment/wiki/images/MDM%20Prestage%20User%20Enrollment%20workflow.png" width="600">
+</p>
 
 [Apple Automated Deployment](https://support.apple.com/en-us/HT204142) (formally, and more commonly known as DEP) enables admins to build Zero-Touch workflows for their employees. A Mobile Device Management Server [(MDM)](https://support.apple.com/en-us/HT207516) is leveraged to pass configuration settings and an enrollment interface to Apple MacOS computer. Apple and a MDM verify that the MacOS device is under your organizations purview. JumpCloud verifies the identify of a user during enrollment and activates their account on currently enrolled MacOS computer.
 

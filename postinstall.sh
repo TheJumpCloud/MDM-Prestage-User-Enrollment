@@ -18,6 +18,5 @@ chown root:wheel /var/tmp/jumpcloud_bootstrap_template.sh
 chmod 644 /Library/LaunchDaemons/com.jumpcloud.prestage.plist
 chown root:wheel /Library/LaunchDaemons/com.jumpcloud.prestage.plist
 
-# load the LaunchDaemon 
+# load the LaunchDaemon
 launchctl load -w /Library/LaunchDaemons/com.jumpcloud.prestage.plist
-# sh /private/tmp/jumpcloud_bootstrap_template.sh

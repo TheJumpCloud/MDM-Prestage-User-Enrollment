@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.1
+
+### RELEASE DATE
+
+April 21, 2020
+
+#### RELEASE NOTES
+
+Fix for MDM Prestage User Enrollment workflow where the JumpCloud Agent would occasionally stop logging during enrollment. The JumpCloud Agent is restarted during enrollment if the agent takes longer than 90 seconds to report a new log.
+
+If the JumpCloud Agent hasn't reported a log after a total of 180 seconds and after the JumpCloud Agent has been restarted, the script will terminate by unloading the LaunchDaemon. The enrollment user is informed that the enrollment did not complete and to check the /var/tmp/debug_depnotify.log file. The decrypt user is deleted at this stage to prevent decryption of the JumpCloud API key. Networking connectivity issues at the end stage of enrollment could cause the enrollment to fail as the system needs to contact JumpCloud to verify it's user bindings are set. This fix should allow for the JumpCloud Agent to restart and check connectivity.
+
 ## 3.1.0
 
 ### RELEASE DATE
