@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.2
+
+### RELEASE DATE
+
+June 4, 2020
+
+#### RELEASE NOTES
+
+Update in script template to specifically use the built in version of OpenSSL in the Encryption and Decryption step of the script. Other versions of OpenSSL may encrypt or decrypt the API Key differently. To ensure the encrypted key can be decrypted by an out-of-the-box macOS system, using the openssl binary located in /usr/bin is necessary.
+
+This patch update will not affect current customers who have successfully encrypted and decrypted their API key.
+
 ## 3.1.1
 
 ### RELEASE DATE

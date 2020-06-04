@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.1 | See the CHANGELOG.md for version information
+#       Version 3.1.2 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -154,7 +154,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.1"
+VERSION="3.1.2"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
