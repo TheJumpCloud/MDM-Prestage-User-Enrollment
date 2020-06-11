@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.1 | See the CHANGELOG.md for version information
+#       Version 3.1.2 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -106,14 +106,14 @@ SELF_PASSWD=false
 function EncryptKey() {
     # Usage: EncryptKey "API_KEY" "DECRYPT_USER_UID" "ORG_ID"
     local ENCRYPTION_KEY=${2}${3}
-    local ENCRYPTED_KEY=$(echo "${1}" | openssl enc -e -base64 -A -aes-128-ctr -nopad -nosalt -k ${ENCRYPTION_KEY})
+    local ENCRYPTED_KEY=$(echo "${1}" | /usr/bin/openssl enc -e -base64 -A -aes-128-ctr -nopad -nosalt -k ${ENCRYPTION_KEY})
     echo "Encrypted key: ${ENCRYPTED_KEY}"
 }
 
 # Used to decrypt $ENCRYPTED_KEY
 function DecryptKey() {
     # Usage: DecryptKey "ENCRYPTED_KEY" "DECRYPT_USER_UID" "ORG_ID"
-    echo "${1}" | openssl enc -d -base64 -aes-128-ctr -nopad -A -nosalt -k "${2}${3}"
+    echo "${1}" | /usr/bin/openssl enc -d -base64 -aes-128-ctr -nopad -A -nosalt -k "${2}${3}"
 }
 
 # Resets DEPNotify
@@ -154,7 +154,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.1"
+VERSION="3.1.2"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
