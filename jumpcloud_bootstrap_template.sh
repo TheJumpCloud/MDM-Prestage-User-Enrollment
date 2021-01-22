@@ -125,41 +125,6 @@ function DEPNotifyReset() {
     killall cfprefsd
 }
 
- # Install Rosetta2 on M1 (Apple Silicon) Macs if not already installed
- function installRosettaForM1() {
-   BIG_SUR_MAJOR=11
-   # Save current IFS (Input Field Separator) state
-   OLDIFS=${IFS}
-   # retrieve OS version info
-   IFS='.' read -r osvers_major osvers_minor osvers_dot_version <<<"$(/usr/bin/sw_vers -productVersion)"
-   # restore IFS to previous state
-   IFS=${OLDIFS}
-
-   if [[ ${osvers_major} -ge ${BIG_SUR_MAJOR} ]]; then
-     # Check processor to see if we even need Rosetta2
-     processor=$(/usr/sbin/sysctl -n machdep.cpu.brand_string | grep -o "Intel")
-     if [[ -n "${processor}" ]]; then
-       echo "Intel processor installed; no need to install Rosetta2"
-     else
-       # Check for an installer receipt for Rosetta. If no receipt is found,
-       # perform a non-interactive install of Rosetta.
-       rosetta_check=$(/usr/sbin/pkgutil --pkgs | grep "com.apple.pkg.RosettaUpdateAuto")
-       if [[ -z "${rosetta_check}" ]]; then
-         if ! /usr/sbin/softwareupdate --install-rosetta --agree-to-license; then
-           echo "Rosetta installation failed!"
-         else
-           echo "Rosetta has been successfully installed."
-         fi
-       else
-         echo "Rosetta is already installed. Nothing to do."
-       fi
-     fi
-   else
-     echo "System is running macOS ${osvers_major}.${osvers_minor}.${osvers_dot_version}."
-     echo "No need to install Rosetta on this version of macOS."
-   fi
- } 
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # END Script Functions                                                         ~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -206,8 +171,8 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
     caffeinatePID=$!
 
     # Install DEPNotify
-    curl --silent --output /tmp/DEPNotify-1.1.5.pkg "https://s3.amazonaws.com/nomadbetas/DEPNotify-1.1.5.pkg" >/dev/null
-    installer -pkg /tmp/DEPNotify-1.1.5.pkg -target /
+    curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
+    installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /
 
     # Create DEPNotify log files
     touch "$DEP_N_DEBUG"
@@ -279,10 +244,7 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
     chown "$ACTIVE_USER":staff "$DEP_N_CONFIG_PLIST"
     chmod 600 "$DEP_N_CONFIG_PLIST"
     sudo -u "$ACTIVE_USER" open -a "$DEP_N_APP" --args -path "$DEP_N_LOG" -fullScreen
-    
-    # Install Rosetta if required
-    installRosettaForM1
-    
+
     # Download and install the JumpCloud agent
     # cat EOF can not be indented
     curl --silent --output /tmp/jumpcloud-agent.pkg "https://s3.amazonaws.com/jumpcloud-windows-agent/production/jumpcloud-agent.pkg" >/dev/null
