@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.3
+
+### RELEASE DATE
+
+January 25, 2021
+
+#### RELEASE NOTES
+
+Macs with M1 processor support. Update URL to pull latest version of DEPNotify which supports M1 systems. Documentation added to note that the arm64 architecture must be specified when building updated versions of the .pkg installer.
+
 ## 3.1.2
 
 ### RELEASE DATE
