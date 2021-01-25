@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.2 | See the CHANGELOG.md for version information
+#       Version 3.1.3 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -154,7 +154,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.2"
+VERSION="3.1.3"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -171,8 +171,8 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
     caffeinatePID=$!
 
     # Install DEPNotify
-    curl --silent --output /tmp/DEPNotify-1.1.5.pkg "https://s3.amazonaws.com/nomadbetas/DEPNotify-1.1.5.pkg" >/dev/null
-    installer -pkg /tmp/DEPNotify-1.1.5.pkg -target /
+    curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
+    installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /
 
     # Create DEPNotify log files
     touch "$DEP_N_DEBUG"
