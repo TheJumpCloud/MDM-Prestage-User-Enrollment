@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.3 | See the CHANGELOG.md for version information
+#       Version 3.1.4 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -154,7 +154,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.3"
+VERSION="3.1.4"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1199,8 +1199,13 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     fi
     # Clean up steps
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
-    # Remove the LaunchDaemon file
-    rm -rf "/Library/LaunchDaemons/${DAEMON}"
+    # Remove the LaunchDaemon file if it exists
+    if [[ -f "/Library/LaunchDaemons/${DAEMON}" ]]; then
+        rm -rf "/Library/LaunchDaemons/${DAEMON}"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: LaunchDaemon Removed" >>"$DEP_N_DEBUG"
+    else
+        echo "$(date "+%Y-%m-%dT%H:%M:%S"): Warning: Could not find/ remove LaunchDaemon" >>"$DEP_N_DEBUG"
+    fi
     # Clean up receipts
     rm /var/tmp/com.jumpcloud*
     # Make script delete itself
