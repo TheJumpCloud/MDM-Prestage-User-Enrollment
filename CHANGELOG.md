@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.4
+
+### RELEASE DATE
+
+July 23, 2021
+
+#### RELEASE NOTES
+
+Fixed a bug for failed enrollments. If the jumpcloud_bootstrap_template.sh were configured improperly, specifically if the launch daemon is named incorrectly it will not "exist" in the specified location. Previously the prestange enrollment script would remove the entire Launch Daemons directory in this case. This release validates that the daemon exists before removing it. If the daemon does not exist the script will not remove any file in that location.
+
 ## 3.1.3
 
 ### RELEASE DATE
