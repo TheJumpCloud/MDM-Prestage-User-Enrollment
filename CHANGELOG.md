@@ -9,6 +9,17 @@ February 04, 2022
 #### RELEASE NOTES
 
 Remove Python call to get active user, in 12.3 python will no longer be shipped with macOS. Regular bash commands can be substituted here to provide compatibility moving forward.
+
+## 3.1.4
+
+### RELEASE DATE
+
+July 23, 2021
+
+#### RELEASE NOTES
+
+Fixed a bug for failed enrollments. If the jumpcloud_bootstrap_template.sh were configured improperly, specifically if the launch daemon is named incorrectly it will not "exist" in the specified location. Previously the prestange enrollment script would remove the entire Launch Daemons directory in this case. This release validates that the daemon exists before removing it. If the daemon does not exist the script will not remove any file in that location.
+
 ## 3.1.3
 
 ### RELEASE DATE
