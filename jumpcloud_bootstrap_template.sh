@@ -118,7 +118,7 @@ function DecryptKey() {
 
 # Resets DEPNotify
 function DEPNotifyReset() {
-    ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
     rm /var/tmp/depnotify* >/dev/null 2>&1
     rm /var/tmp/com.depnotify.* >/dev/null 2>&1
     rm /Users/"$ACTIVE_USER"/Library/Preferences/menu.nomad.DEPNotify* >/dev/null 2>&1
@@ -202,7 +202,7 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
     #*******************************************************************************
 
     # Capture active user username
-    ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
 
     # Captures active users UID
     uid=$(id -u "$ACTIVE_USER")
@@ -371,8 +371,6 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
     # while the groupCheck variable is empty, attempt to add the system to the enrollment group
     # then check if the group was added, if the system is in the enrollment group, exit the loop
 
-    # variable to ensure system time is set correctly, once during this loop
-    timeSet=false
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Expected systemID: ${systemID} to be a member of group: ${DEP_ENROLLMENT_GROUP_ID}" >>"$DEP_N_DEBUG"
     while [[ -z $groupCheck ]]; do
         # log note
@@ -381,12 +379,10 @@ if [[ ! -f $DEP_N_GATE_SYSADD ]]; then
         sleep 5
 
         # if system is 10.12 or newer, this command should work to set the system time
-        MacOSMinorVersion=$(sw_vers -productVersion | cut -d '.' -f 2)
-        if [[ MacOSMinorVersion -ge 12 && $timeSet == false ]]; then
+        if [[ ($MacOSMajorVersion -eq 10 && $MacOSMinorVersion -ge 12) || $MacOSMajorVersion -ge 11 ]]; then
+            # only run this once - set system time (in testing restored images can be out of sync with a time server)
             echo "$(date "+%Y-%m-%d %H:%M:%S"): Setting the correct system time" >>"$DEP_N_DEBUG"
             sntp -sS $NTP_SERVER
-            # only run this once
-            timeSet=true
         fi
 
         # attempt to add system to enrollment group
@@ -452,7 +448,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     # check if the DEPNotify process is running
     process=$(echo | ps aux | grep "\bDEPNotify\.app")
     if [[ -z $process ]]; then
-        ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+        ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Expected DEPNotify.app to be in process list, process not found. Launching DEPNotify as $ACTIVE_USER" >>"$DEP_N_DEBUG"
         sudo -u "$ACTIVE_USER" open -a "$DEP_N_APP" --args -path "$DEP_N_LOG" -fullScreen
         process=$(echo | ps aux | grep "\bDEPNotify\.app")
@@ -487,7 +483,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     # Recapture these variables - necessary if the system was restarted
     DEP_N_USER_INPUT_PLIST="/Users/$ACTIVE_USER/Library/Preferences/menu.nomad.DEPNotifyUserInput.plist"
     DEP_N_CONFIG_PLIST="/Users/$ACTIVE_USER/Library/Preferences/menu.nomad.DEPNotify.plist"
-    ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
     uid=$(id -u "$ACTIVE_USER")
     ###
     if [[ -z "${APIKEY}" ]]; then
@@ -1146,7 +1142,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "Status: Enrollment Complete" >>"$DEP_N_LOG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Enrollment Complete" >>"$DEP_N_DEBUG"
 
-    ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for ${ACTIVE_USER} user to logout... " >>"$DEP_N_DEBUG"
     FINDER_PROCESS=$(pgrep -l "Finder")
     while [ "$FINDER_PROCESS" != "" ]; do
@@ -1174,7 +1170,7 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     if [[ $DELETE_ENROLLMENT_USERS == true ]]; then
         # wait until welcome user is logged out
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Testing if ${ENROLLMENT_USER} user is logged out" >>"$DEP_N_DEBUG"
-        ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+        ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
         if [[ "${ACTIVE_USER}" == "${ENROLLMENT_USER}" ]]; then
             echo "$(date "+%Y-%m-%d %H:%M:%S"): Logged in user is: ${ACTIVE_USER}, waiting until logout to continue" >>"$DEP_N_DEBUG"
             FINDER_PROCESS=$(pgrep -l "Finder")
@@ -1186,7 +1182,7 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
             done
         fi
         # given the case that the enrollment user was logged in previously, recheck the active user
-        ACTIVE_USER=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+        ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Logged in user is: ${ACTIVE_USER}" >>"$DEP_N_DEBUG"
         if [[ "${ACTIVE_USER}" == "" || "${ACTIVE_USER}" != "${ENROLLMENT_USER}" ]]; then
             # delete the enrollment and decrypt user
