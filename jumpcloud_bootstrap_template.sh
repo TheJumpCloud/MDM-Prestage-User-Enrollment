@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.4 | See the CHANGELOG.md for version information
+#       Version 3.1.5 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -144,6 +144,10 @@ DEP_N_GATE_INSTALLJC="/var/tmp/com.jumpcloud.gate.installjc"
 DEP_N_GATE_SYSADD="/var/tmp/com.jumpcloud.gate.sysadd"
 DEP_N_GATE_UI="/var/tmp/com.jumpcloud.gate.ui"
 DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
+# System Versions
+MacOSMajorVersion=$(sw_vers -productVersion | cut -d '.' -f 1)
+MacOSMinorVersion=$(sw_vers -productVersion | cut -d '.' -f 2)
+MacOSPatchVersion=$(sw_vers -productVersion | cut -d '.' -f 3)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # END Script Variables                                                        ~
@@ -154,7 +158,7 @@ DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.4"
+VERSION="3.1.5"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

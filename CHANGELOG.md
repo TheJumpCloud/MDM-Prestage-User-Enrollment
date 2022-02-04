@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.1.5
+
+### RELEASE DATE
+
+February 04, 2022
+
+#### RELEASE NOTES
+
+Remove Python call to get active user, in 12.3 python will no longer be shipped with macOS. Regular bash commands can be substituted here to provide compatibility moving forward.
 ## 3.1.3
 
 ### RELEASE DATE
