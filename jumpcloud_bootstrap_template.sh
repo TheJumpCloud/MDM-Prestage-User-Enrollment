@@ -1016,7 +1016,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     now=$(date "+%y/%m/%d %H:%M:%S")
     # Get last line of the JumpCloud Agent
     lstLine=$(tail -1 /var/log/jcagent.log)
-    regexLine='([0-9][0-9])/([0-9][0-9])/([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
+    regexLine='([0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
     if [[ $lstLine =~ $regexLine ]]; then
         # Get the time form the agent log
         lstTime=${BASH_REMATCH[0]}
@@ -1025,7 +1025,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "$(date "+%Y-%m-%d %H:%M:%S"): JCAgent Last Log Time     : $lstTime" >>"$DEP_N_DEBUG"
     # convert to Epoch time
     nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
-    jclogEpoch=$(date -j -f "%y/%m/%d %T" "${lstTime}" +'%s')
+    jclogEpoch=$(date -j -f "%y-%m-%d %T" "${lstTime}" +'%s')
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Current System Epoch Time : $nowEpoch" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Last JCAgent Epoch Time   : $jclogEpoch" >>"$DEP_N_DEBUG"
     # get the difference in time
@@ -1039,11 +1039,11 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         groupSwitchCheck=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
         groupTakeOverCheck=$(echo ${groupSwitchCheck} | grep "Processing user updates")
         lstLine=$(tail -1 /var/log/jcagent.log)
-        regexLine='([0-9][0-9])/([0-9][0-9])/([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
+        regexLine='([0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]:[0-9][0-9]:[0-9][0-9])'
         if [[ $lstLine =~ $regexLine ]]; then
             lstTime=${BASH_REMATCH[0]}
         fi
-        jclogEpoch=$(date -j -f "%y/%m/%d %T" "${lstTime}" +'%s')
+        jclogEpoch=$(date -j -f "%y-%m-%d %T" "${lstTime}" +'%s')
                 now=$(date "+%y/%m/%d %H:%M:%S")
                 nowEpoch=$(date -j -f "%y/%m/%d %T" "${now}" +'%s')
                 epochDiff=$(( (nowEpoch - jclogEpoch) ))
