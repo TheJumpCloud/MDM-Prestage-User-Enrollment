@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.5 | See the CHANGELOG.md for version information
+#       Version 3.1.6 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -158,7 +158,7 @@ MacOSPatchVersion=$(sw_vers -productVersion | cut -d '.' -f 3)
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.5"
+VERSION="3.1.6"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

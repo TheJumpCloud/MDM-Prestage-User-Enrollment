@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.6
+
+### RELEASE DATE
+
+September 30, 2022
+
+#### RELEASE NOTES
+
+Update TimeStamp Format to account for agent logging changes in newer versions of the JumpCloud Agent.
+
 ## 3.1.5
 
 ### RELEASE DATE
