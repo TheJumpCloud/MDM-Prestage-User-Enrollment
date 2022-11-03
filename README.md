@@ -10,6 +10,22 @@ With the aim to Make Work Happen&trade;, the MDM-Prestage-User-Enrollment workfl
 
 An implementation of the MDM-Prestage-User-Enrollment workflow allows JumpCloud admins to deploy company-owned, MacOS computers to employees around the globe before ever opening the box.
 
+## MacOS Ventura Note/ Future Support
+
+If you have been using this tool in previous versions of macOS, please note that the default version of openssl on mac has changed. The latest version of this script was updated to support Ventura's version of LibreSSL. Please merge your changes from this release into your script if you wish to continue using this script on Ventura systems.
+
+### Future macOS compatibility
+
+With other MDM vendors taking advantage of SSO authentication during enrollment, it's unlikely this script has much of a use case nor will it see much future development. As is the case with JAMF, enabling JumpCloud SSO authentication during enrollment will assign the first user of the system to be the username of JumpCloud user who authenticated during enrollment (assuming your `usernames` match the email convention i.e. username = `username` & email = `username`@domain.com).
+
+This workflow essentially negates the need for the entirety of this script.
+
+A post enrollment script can be used then to:
+
+- [Install the JumpCloud Agent Silently]()
+- Search JumpCloud users by username on system
+- [Assign the authenticated user to the system](https://docs.jumpcloud.com/api/2.0/index.html#tag/Users/operation/graph_userAssociationsPost)
+
 ## How does it work
 
 <p align="center">
