@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.7
+
+### RELEASE DATE
+
+November 03, 2022
+
+#### RELEASE NOTES
+
+Between MacOS Ventura and Monterey, the version of OpenSSL was updated. In Monterey systems and below, the shipped versions of OpenSSL used the MD5 digest by default for encoding/ decoding strings. In Ventura that default changed. This release specifies that the encryption/ decryption functions should use the MD5 digest thus ensuring compatibility of this script between OS versions of MacOS.
+
 ## 3.1.6
 
 ### RELEASE DATE
