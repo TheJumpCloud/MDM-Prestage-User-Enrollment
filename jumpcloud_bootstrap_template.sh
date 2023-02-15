@@ -251,7 +251,7 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
 
     # Download and install the JumpCloud agent
     # cat EOF can not be indented
-    curl --silent --output /tmp/jumpcloud-agent.pkg "https://s3.amazonaws.com/jumpcloud-windows-agent/production/jumpcloud-agent.pkg" >/dev/null
+    curl --silent --output /tmp/jumpcloud-agent.pkg "https://cdn02.jumpcloud.com/production/jumpcloud-agent.pkg" >/dev/null
     mkdir -p /opt/jc
     cat <<-EOF >/opt/jc/agentBootstrap.json
 {
