@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.8
+
+### RELEASE DATE
+
+March 20, 2023
+
+#### RELEASE NOTES
+
+Added a condition to the script to account for systems running the tool without a valid APIKEY. Systems in this state were errantly attempting to query the API and would never succeed. If systems are caught in this state, the script will log an error and delete the `jumpcloud_bootstrap_template.sh` script.
+
 ## 3.1.7
 
 ### RELEASE DATE
