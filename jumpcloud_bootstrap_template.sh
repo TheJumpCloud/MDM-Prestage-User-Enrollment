@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.7 | See the CHANGELOG.md for version information
+#       Version 3.1.8 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -144,6 +144,7 @@ DEP_N_GATE_INSTALLJC="/var/tmp/com.jumpcloud.gate.installjc"
 DEP_N_GATE_SYSADD="/var/tmp/com.jumpcloud.gate.sysadd"
 DEP_N_GATE_UI="/var/tmp/com.jumpcloud.gate.ui"
 DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
+DEP_N_COUNTER="/var/tmp/com.jumpcloud.gate.counter.txt"
 # System Versions
 MacOSMajorVersion=$(sw_vers -productVersion | cut -d '.' -f 1)
 MacOSMinorVersion=$(sw_vers -productVersion | cut -d '.' -f 2)
@@ -158,7 +159,7 @@ MacOSPatchVersion=$(sw_vers -productVersion | cut -d '.' -f 3)
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.7"
+VERSION="3.1.8"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -731,8 +732,8 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             VALID_PASSWORD='True'
 
             password=$(launchctl asuser "$uid" /usr/bin/osascript -e '
-            Tell application "System Events" 
-                with timeout of 1800 seconds 
+            Tell application "System Events"
+                with timeout of 1800 seconds
                     display dialog "PASSWORD COMPLEXITY REQUIREMENTS:\n--------------------------------------------------------------\n * At least 8 characters long \n * Have at least 1 lowercase character \n * Have at least 1 uppercase character \n * Have at least 1 number \n * Have at least 1 special character'"$COMPLEXITY"'" with title "CREATE A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result 
                 end timeout
             end tell' 2>/dev/null)
@@ -805,8 +806,8 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             if [[ $VALID_PASSWORD == 'True' ]]; then
                 passCheck=$((passCheck + 1))
                 passwordMatch=$(launchctl asuser "$uid" /usr/bin/osascript -e '
-                Tell application "System Events" 
-                    with timeout of 1800 seconds 
+                Tell application "System Events"
+                    with timeout of 1800 seconds
                         display dialog "CONFIRM PASSWORD:\n--------------------------------------------------------------\n" with title "CONFIRM A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result 
                     end timeout
                 end tell' 2>/dev/null)
@@ -821,7 +822,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                     echo "$(date "+%Y-%m-%d %H:%M:%S"): Password does not contain a match"
                     passCheck=0
                     VALID_PASSWORD='False'
-                fi 
+                fi
 
                 COMPLEXITY='\n\nCOMPLEXITY NOT SATISFIED:\n --------------------------------------------------------------'$LENGTH''$UPPER''$LOWER''$SPECIAL''$NUMBER''$passMatch' \n\n TRY AGAIN'
             fi
@@ -942,6 +943,20 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud user "$userID "bound to systemID: "$systemID >>"$DEP_N_DEBUG"
     else
         echo "$(date "+%Y-%m-%d %H:%M:%S"): $userID : $userBindCheck : $regex error JumpCloud user not bound to system" >>"$DEP_N_DEBUG"
+        # fail counter
+        if [[ ! -f $DEP_N_COUNTER ]]; then
+            touch $DEP_N_COUNTER
+            "0" > $DEP_N_COUNTER
+        else
+            count=$(cat $DEP_N_COUNTER)
+            if [[ $count == "3" ]]; then
+                # Make script delete itself
+                echo "Command: Quit: "Enrollment Failed, check the debug logs in /var/tmp/"" >>"$DEP_N_LOG"
+                rm -- "$0"
+            else
+                echo $(($count + 1)) > $DEP_N_COUNTER
+            fi
+        fi
         exit 1
     fi
 
@@ -1082,7 +1097,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Quitting Enrollment" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the decrypt user: $DECRYPT_USER" >>"$DEP_N_DEBUG"
         sysadminctl -deleteUser $DECRYPT_USER >>"$DEP_N_DEBUG" 2>&1
-        echo "Command: Quit: "Enrollment Failed, check the debug logs in /var/tmp/"" >> $DEP_N_LOG
+        echo "Command: Quit: "Enrollment Failed, check the debug logs in /var/tmp/"" >>"$DEP_N_LOG"
         launchctl unload "/Library/LaunchDaemons/${DAEMON}"
         rm -- "$0"
     fi
@@ -1117,7 +1132,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Hostname: $sysSearchRawName" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-    
+
     # User Agent Report
     SETTINGS=$(curl \
         -s \
