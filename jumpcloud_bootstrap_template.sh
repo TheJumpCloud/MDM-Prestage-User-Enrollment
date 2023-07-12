@@ -622,6 +622,13 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         if [ "$totalCount" == "1" ]; then
             search_step=$((search_step + 1))
             LOCATED_ACCOUNT='True'
+            # Get the username from JumpCloud User Search
+            regex='username":"(.*)",'
+            if [[ $userSearch =~ $regex ]]; then
+                usernameMatch="${BASH_REMATCH[1]}"
+            fi
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USERNAME SEARCH $usernameMatch" >>"$DEP_N_DEBUG"
+
             if [[ search_step -gt 1 && $search_active == true ]]; then
                 pass_path=not_required
                 echo "Status: Click CONTINUE" >>"$DEP_N_LOG"
@@ -987,7 +994,79 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "Status: System Account Configured" >>"$DEP_N_LOG"
 
     echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud agent local account takeover complete" >>"$DEP_N_DEBUG"
+    echo "Status: Applying Finishing Touches" >>"$DEP_N_LOG"
 
+    FINISH_TEXT='This window will automatically close when onboarding is complete.\n\nYou will be taken directly to the log in screen. \n\n Log in with your new account! \n\n'
+
+    echo "Command: MainText: $FINISH_TEXT" >>"$DEP_N_LOG"
+    # wait just a moment
+    # here we want to just note that the newly matched user does not have secure token
+    # validate that the expected user has secure token
+    stStatus=$(sysadminctl -secureTokenStatus "$usernameMatch" 2>&1)
+    echo $stStatus
+    regex='Secure token is (ENABLED|DISABLED)'
+    if [[ $stStatus =~ $regex ]]; then
+        stStatusResult="${BASH_REMATCH[1]}"
+    fi
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): $usernameMatch Secure Token Status: $stStatusResult" >>"$DEP_N_DEBUG"
+
+    sleep 10
+    # steps:
+    # hide enrollment users:
+    dscl . create /Users/$ENROLLMENT_USER IsHidden 1
+    dscl . create /Users/$DECRYPT_USER IsHidden 1
+    # logout of current user account
+    launchctl bootout user/$(id -u $ENROLLMENT_USER)
+
+    # add gate file here, user interaction complete
+    kill $caffeinatePID
+    touch $DEP_N_GATE_DONE
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # END Post login active session workflow                                       ~
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fi
+
+
+
+# final steps to check
+# this will initially fail at the end of the script, if we remove the welcome user
+# the LaunchDaemon will be running as user null. However on next run, the script
+# will run as root and should have access to remove the launch daemon and remove
+# this script. The LaunchDaemon process with status 127 will remain on the system
+# until reboot, it will be not be called again after reboot.
+if [[ -f $DEP_N_GATE_DONE ]]; then
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for $usernameMatch to login before we can continue." >>"$DEP_N_DEBUG"
+    # Wait for active user session
+    FINDER_PROCESS=$(pgrep -l "Finder")
+    until [ "$FINDER_PROCESS" != "" ]; do
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process not found. User session not active." >>"$DEP_N_DEBUG"
+        sleep 10
+        FINDER_PROCESS=$(pgrep -l "Finder")
+    done
+    # Validate that the correct user logged in:
+
+    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
+    sudo -u "$ACTIVE_USER" open -a "$DEP_N_APP" --args -path "$DEP_N_LOG" -fullScreen
+    FINISH_TEXT='This window will automatically close when onboarding is complete.\n\nWe are wrapping things up.'
+    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
+
+    if [[ $ACTIVE_USER == $usernameMatch ]]; then
+        # validate that the expected user has secure token
+        stStatus=$(sysadminctl -secureTokenStatus "$ACTIVE_USER" 2>&1)
+        echo $stStatus
+        regex='Secure token is (ENABLED|DISABLED)'
+        if [[ $stStatus =~ $regex ]]; then
+            stStatusResult="${BASH_REMATCH[1]}"
+        fi
+    fi
+    echo "$ACTIVE_USER ST Status: $stStatusResult"
+    if [[ $stStatusResult == 'ENABLED' ]];then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): $usernameMatch has secure token" >>"$DEP_N_DEBUG"
+    else
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] $usernameMatch does not have secure token, the enrollment users will not be removed" >>"$DEP_N_DEBUG"
+    fi
+
+    echo "Command: MainText: $FINISH_TEXT" >>"$DEP_N_LOG"
     # Remove from DEP_ENROLLMENT_GROUP and add to DEP_POST_ENROLLMENT_GROUP
     removeGrp=$(
     curl \
@@ -1014,12 +1093,6 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     )
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Adding to Post Enrollment Group $addGrp" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Added to from DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
-
-    echo "Status: Applying Finishing Touches" >>"$DEP_N_LOG"
-
-    FINISH_TEXT='This window will automatically close when onboarding is complete.\n\nYou will be taken directly to the log in screen. \n\n Log in with your new account! \n\n'
-
-    echo "Command: MainText: $FINISH_TEXT" >>"$DEP_N_LOG"
 
     # Get JCAgent.log to ensure user updates have been processes on the system
     logLinesRaw=$(wc -l /var/log/jcagent.log)
@@ -1160,31 +1233,8 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "Command: MainTitle: $FINISH_TITLE" >>"$DEP_N_LOG"
     echo "Status: Enrollment Complete" >>"$DEP_N_LOG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Enrollment Complete" >>"$DEP_N_DEBUG"
+    echo "Command: Quit" >>"$DEP_N_LOG"
 
-    ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for ${ACTIVE_USER} user to logout... " >>"$DEP_N_DEBUG"
-    FINDER_PROCESS=$(pgrep -l "Finder")
-    while [ "$FINDER_PROCESS" != "" ]; do
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process found. Waiting until session end" >>"$DEP_N_DEBUG"
-        sleep 1
-        FINDER_PROCESS=$(pgrep -l "Finder")
-    done
-
-    # add gate file here, user interaction complete
-    kill $caffeinatePID
-    touch $DEP_N_GATE_DONE
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # END Post login active session workflow                                       ~
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-fi
-
-# final steps to check
-# this will initially fail at the end of the script, if we remove the welcome user
-# the LaunchDaemon will be running as user null. However on next run, the script
-# will run as root and should have access to remove the launch daemon and remove
-# this script. The LaunchDaemon process with status 127 will remain on the system
-# until reboot, it will be not be called again after reboot.
-if [[ -f $DEP_N_GATE_DONE ]]; then
     # Delete enrollment users
     if [[ $DELETE_ENROLLMENT_USERS == true ]]; then
         # wait until welcome user is logged out
