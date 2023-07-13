@@ -145,6 +145,7 @@ DEP_N_GATE_SYSADD="/var/tmp/com.jumpcloud.gate.sysadd"
 DEP_N_GATE_UI="/var/tmp/com.jumpcloud.gate.ui"
 DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 DEP_N_COUNTER="/var/tmp/com.jumpcloud.gate.counter.txt"
+DEP_N_PERSIST="/var/tmp/com.jumpcloud.persist.txt"
 # System Versions
 MacOSMajorVersion=$(sw_vers -productVersion | cut -d '.' -f 1)
 MacOSMinorVersion=$(sw_vers -productVersion | cut -d '.' -f 2)
@@ -627,7 +628,22 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             if [[ $userSearch =~ $regex ]]; then
                 usernameMatch="${BASH_REMATCH[1]}"
             fi
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USERNAME SEARCH $usernameMatch" >>"$DEP_N_DEBUG"
+            regex='\"systemUsername\":\"([^\"]*)'
+            if [[ $userSearch =~ $regex ]]; then
+                systemUsernameMatch="${BASH_REMATCH[1]}"
+            fi
+
+            # determine the username of the user to be bound
+            if [[ -z $systemUsernameMatch && -n $usernameMatch ]]; then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Found user has username: $usernameMatch" >>"$DEP_N_DEBUG"
+                echo "$usernameMatch" >>"$DEP_N_PERSIST"
+            elif
+                [[ -n $systemUsernameMatch && -n $usernameMatch ]]; then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Found user has systemUsername: $systemUsernameMatch" >>"$DEP_N_DEBUG"
+                echo "$systemUsernameMatch" >>"$DEP_N_PERSIST"
+            fi
+            # Set the enrollment user from file
+            enrollmentUser=$(cat $DEP_N_PERSIST)
 
             if [[ search_step -gt 1 && $search_active == true ]]; then
                 pass_path=not_required
@@ -892,10 +908,28 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 fi
 # Final steps to complete the install
 if [[ ! -f $DEP_N_GATE_DONE ]]; then
-
     # Caffeinate this script
     caffeinate -d -i -m -u &
     caffeinatePID=$!
+    # we still need to validate the API key variable here. If it's null attempt to get it
+    if [[ -z $APIKEY ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Credential set is null, decrypting..." >>"$DEP_N_DEBUG"
+        DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
+        # Gather OrgID
+        conf="$(cat /opt/jc/jcagent.conf)"
+        regex='\"ldap_domain\":\"[a-zA-Z0-9]*'
+        if [[ $conf =~ $regex ]]; then
+            ORG_ID_RAW="${BASH_REMATCH[@]}"
+        fi
+
+        ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
+        APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+    fi
+    # get the enrollment user if not there:
+    if [[ -z $enrollmentUser ]]; then
+        enrollmentUser=$(cat $DEP_N_PERSIST)
+    fi
+
     ## Get the JumpCloud SystemID
     conf="$(cat /opt/jc/jcagent.conf)"
     regex='\"systemKey\":\"[a-zA-Z0-9]{24}\"'
@@ -1002,13 +1036,18 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     # wait just a moment
     # here we want to just note that the newly matched user does not have secure token
     # validate that the expected user has secure token
-    stStatus=$(sysadminctl -secureTokenStatus "$usernameMatch" 2>&1)
+    stStatus=$(sysadminctl -secureTokenStatus "$enrollmentUser" 2>&1)
     echo $stStatus
     regex='Secure token is (ENABLED|DISABLED)'
     if [[ $stStatus =~ $regex ]]; then
         stStatusResult="${BASH_REMATCH[1]}"
     fi
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): $usernameMatch Secure Token Status: $stStatusResult" >>"$DEP_N_DEBUG"
+    if [[ $stStatusResult == 'DISABLED' ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): $enrollmentUser Secure Token Status: $stStatusResult" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): $enrollmentUser must login before being granted Secure Token" >>"$DEP_N_DEBUG"
+    else
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): $enrollmentUser Secure Token Status: $stStatusResult" >>"$DEP_N_DEBUG"
+    fi
 
     sleep 10
     # steps:
@@ -1034,8 +1073,28 @@ fi
 # will run as root and should have access to remove the launch daemon and remove
 # this script. The LaunchDaemon process with status 127 will remain on the system
 # until reboot, it will be not be called again after reboot.
+
 if [[ -f $DEP_N_GATE_DONE ]]; then
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for $usernameMatch to login before we can continue." >>"$DEP_N_DEBUG"
+    # we still need to validate the API key variable here. If it's null attempt to get it
+    if [[ -z $APIKEY ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Credential set is null, decrypting..." >>"$DEP_N_DEBUG"
+        DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
+        # Gather OrgID
+        conf="$(cat /opt/jc/jcagent.conf)"
+        regex='\"ldap_domain\":\"[a-zA-Z0-9]*'
+        if [[ $conf =~ $regex ]]; then
+            ORG_ID_RAW="${BASH_REMATCH[@]}"
+        fi
+
+        ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
+        APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+    fi
+    # get the enrollment user if not there:
+    if [[ -z $enrollmentUser ]]; then
+        enrollmentUser=$(cat $DEP_N_PERSIST)
+    fi
+
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Waiting for $enrollmentUser to login before we can continue." >>"$DEP_N_DEBUG"
     # Wait for active user session
     FINDER_PROCESS=$(pgrep -l "Finder")
     until [ "$FINDER_PROCESS" != "" ]; do
@@ -1050,7 +1109,7 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     FINISH_TEXT='This window will automatically close when onboarding is complete.\n\nWe are wrapping things up.'
     ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
 
-    if [[ $ACTIVE_USER == $usernameMatch ]]; then
+    if [[ $ACTIVE_USER == $enrollmentUser ]]; then
         # validate that the expected user has secure token
         stStatus=$(sysadminctl -secureTokenStatus "$ACTIVE_USER" 2>&1)
         echo $stStatus
@@ -1061,9 +1120,9 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     fi
     echo "$ACTIVE_USER ST Status: $stStatusResult"
     if [[ $stStatusResult == 'ENABLED' ]];then
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): $usernameMatch has secure token" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): $enrollmentUser has secure token" >>"$DEP_N_DEBUG"
     else
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] $usernameMatch does not have secure token, the enrollment users will not be removed" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] $enrollmentUser does not have secure token, the enrollment users will not be removed" >>"$DEP_N_DEBUG"
     fi
 
     echo "Command: MainText: $FINISH_TEXT" >>"$DEP_N_LOG"
