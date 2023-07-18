@@ -146,6 +146,7 @@ DEP_N_GATE_UI="/var/tmp/com.jumpcloud.gate.ui"
 DEP_N_GATE_DONE="/var/tmp/com.jumpcloud.gate.done"
 DEP_N_COUNTER="/var/tmp/com.jumpcloud.gate.counter.txt"
 DEP_N_PERSIST="/var/tmp/com.jumpcloud.persist.txt"
+DEP_N_HTTP_RESPONSE="/var/tmp/com.jumpcloud.httpResponse.txt"
 # System Versions
 MacOSMajorVersion=$(sw_vers -productVersion | cut -d '.' -f 1)
 MacOSMinorVersion=$(sw_vers -productVersion | cut -d '.' -f 2)
@@ -178,8 +179,15 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
 
     # Install DEPNotify
     curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
-    installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /
-
+    DEPNotifyInstall=$(installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /)
+    # retry if not successful
+    while ! [[ $DEPNotifyInstall =~ 'was successful' ]]; do
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying DEPNotify Download" >>"$DEP_N_DEBUG"
+        curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying DEPNotify Install" >>"$DEP_N_DEBUG"
+        DEPNotifyInstall=$(installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /)
+    done
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): DEPNotify Installed" >>"$DEP_N_DEBUG"
     # Create DEPNotify log files
     touch "$DEP_N_DEBUG"
     touch "$DEP_N_LOG"
@@ -262,15 +270,18 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
 "connectKey": "$YOUR_CONNECT_KEY"
 }
 EOF
-
-    # Below file created by POST install script using munkipkg
-    # cat <<-EOF >/var/run/JumpCloud-SecureToken-Creds.txt
-    # $ENROLLMENT_USER;$ENROLLMENT_USER_PASSWORD
-    # EOF
-
     # Installs JumpCloud agent
     echo "$(date "+%Y-%m-%d %H:%M:%S"): User $ACTIVE_USER is logged in, installing JC" >>"$DEP_N_DEBUG"
-    installer -pkg /tmp/jumpcloud-agent.pkg -target /
+    JumpCloudInstall=$(installer -pkg /tmp/jumpcloud-agent.pkg -target /)
+
+    # retry if not successful
+    while ! [[ $JumpCloudInstall =~ 'was successful' ]]; do
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying JumpCloud Download" >>"$DEP_N_DEBUG"
+            curl --silent --output /tmp/jumpcloud-agent.pkg "https://cdn02.jumpcloud.com/production/jumpcloud-agent.pkg" >/dev/null
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying JumpCloud Install" >>"$DEP_N_DEBUG"
+            JumpCloudInstall=$(installer -pkg /tmp/jumpcloud-agent.pkg -target /)
+    done
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud Installed" >>"$DEP_N_DEBUG"
 
     # Validate JumpCloud agent install
     JCAgentConfPath='/opt/jc/jcagent.conf'
@@ -560,9 +571,8 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-
         userSearch=$(
-            curl -s \
+            curl \
                 -X 'POST' \
                 -A "${USER_AGENT}" \
                 -H 'Content-Type: application/json' \
@@ -624,7 +634,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             search_step=$((search_step + 1))
             LOCATED_ACCOUNT='True'
             # Get the username from JumpCloud User Search
-            regex='username":"(.*)",'
+            regex='\"username\":\"([^\"]*)'
             if [[ $userSearch =~ $regex ]]; then
                 usernameMatch="${BASH_REMATCH[1]}"
             fi
@@ -911,25 +921,6 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     # Caffeinate this script
     caffeinate -d -i -m -u &
     caffeinatePID=$!
-    # we still need to validate the API key variable here. If it's null attempt to get it
-    if [[ -z $APIKEY ]]; then
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Credential set is null, decrypting..." >>"$DEP_N_DEBUG"
-        DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
-        # Gather OrgID
-        conf="$(cat /opt/jc/jcagent.conf)"
-        regex='\"ldap_domain\":\"[a-zA-Z0-9]*'
-        if [[ $conf =~ $regex ]]; then
-            ORG_ID_RAW="${BASH_REMATCH[@]}"
-        fi
-
-        ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
-        APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
-    fi
-    # get the enrollment user if not there:
-    if [[ -z $enrollmentUser ]]; then
-        enrollmentUser=$(cat $DEP_N_PERSIST)
-    fi
-
     ## Get the JumpCloud SystemID
     conf="$(cat /opt/jc/jcagent.conf)"
     regex='\"systemKey\":\"[a-zA-Z0-9]{24}\"'
@@ -947,6 +938,68 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
         exit 1
     fi
 
+    # we still need to validate the API key variable here. If it's null attempt to get it
+    if [[ -z $APIKEY ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Credential set is null, attempting to get API key again..." >>"$DEP_N_DEBUG"
+        DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
+        # Gather OrgID
+        conf="$(cat /opt/jc/jcagent.conf)"
+        regex='\"ldap_domain\":\"[a-zA-Z0-9]*'
+        if [[ $conf =~ $regex ]]; then
+            ORG_ID_RAW="${BASH_REMATCH[@]}"
+        fi
+
+        ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
+        # Get ORG ID
+        if [[ -z $ORG_ID ]]; then
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ORGID Variable is missing" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Getting System Details with systemContext API" >>"$DEP_N_DEBUG"
+            # Get the current time.
+            now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+            # create the string to sign from the request-line and the date
+            signstr="GET /api/systems/${systemID} HTTP/1.1\ndate: ${now}"
+
+            # create the signature
+            signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+            # make the api call passing the signature in the authorization header
+            httpRequest=$(
+                curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                    -H "Accept: application/json" \
+                    -H "Date: ${now}" \
+                    -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                    --url https://console.jumpcloud.com/api/systems/${systemID}
+                )
+            # Check Response
+            responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+            if [[ $httpRequest != "200" ]]; then
+                # handle error
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+                # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+            else
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): System details returned successfully" >>"$DEP_N_DEBUG"
+                # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+                # Get ORGID
+                regexORG='\"organization\":\"([a-zA-Z0-9]{24})\"'
+                if [[ $responseContent =~ $regexORG ]]; then
+                    ORG_ID="${BASH_REMATCH[1]}"
+                fi
+                APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+            fi
+        fi
+        # check if we can validate the APIKEY (this may not be possible in case of a reboot)
+        if [[ -n $ENCRYPTED_KEY && -n $DECRYPT_USER_ID  && -n $ORG_ID ]]; then
+            APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+        else
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): One of the required variables is null, script will progress and use the system context API Key" >>"$DEP_N_DEBUG"
+            SelfSignedRequest=true
+        fi
+    fi
+    # get the enrollment user if not there:
+    if [[ -z $enrollmentUser ]]; then
+        enrollmentUser=$(cat $DEP_N_PERSIST)
+    fi
+
     ## Capture current logFile
     logLinesRaw=$(wc -l /var/log/jcagent.log)
 
@@ -955,27 +1008,88 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     echo "Status: Creating System Account" >>"$DEP_N_LOG"
 
     ## Bind JumpCloud user to JumpCloud system
-    userBind=$(
-        curl -s \
-            -X 'POST' \
-            -A "${USER_AGENT}" \
-            -H 'Accept: application/json' \
-            -H 'Content-Type: application/json' \
-            -H 'x-api-key: '${APIKEY}'' \
-            -d '{ "attributes": { "sudo": { "enabled": '${admin}',"withoutPassword": false}}   , "op": "add", "type": "user","id": "'${userID}'"}' \
-            "https://console.jumpcloud.com/api/v2/systems/${systemID}/associations"
-    )
+    if [[ $SelfSignedRequest ]]; then
 
-    #Check and ensure user bound to system
-    userBindCheck=$(
-        curl -s \
-            -X 'GET' \
-            -A "${USER_AGENT}" \
-            -H 'Accept: application/json' \
-            -H 'Content-Type: application/json' \
-            -H 'x-api-key: '${APIKEY}'' \
-            "https://console.jumpcloud.com/api/v2/systems/${systemID}/associations?targets=user"
-    )
+        ## Begin User Bind Self Signed Request
+        # make the api call passing the signature in the authorization header
+        # Get The current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+
+        # create the string to sign from the request-line and the date
+        signstr="POST /api/v2/systems/${systemID}/associations HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o /var/tmp/response.txt -w "%{http_code}" \
+                -X "POST" \
+                -A "${USER_AGENT}" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                -d '{ "attributes": { "sudo": { "enabled": '${admin}',"withoutPassword": false}}   , "op": "add", "type": "user","id": "'${userID}'"}' \
+                --url "https://console.jumpcloud.com/api/v2/systems/${systemID}/associations"
+        )
+        userBind=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+        fi
+        ## End User Bind Self Signed Request
+        ## Begin User Bind Check
+        # make the api call passing the signature in the authorization header
+        # Get The current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+
+        # create the string to sign from the request-line and the date
+        signstr="GET /api/v2/systems/${systemID}/associations HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o /var/tmp/response.txt -w "%{http_code}" \
+                -X "GET" \
+                -A "${USER_AGENT}" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                -d '{ "attributes": { "sudo": { "enabled": '${admin}',"withoutPassword": false}}   , "op": "add", "type": "user","id": "'${userID}'"}' \
+                --url "https://console.jumpcloud.com/api/v2/systems/${systemID}/associations?targets=user"
+        )
+        userBindCheck=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+        fi
+    else
+        userBind=$(
+            curl -s \
+                -X 'POST' \
+                -A "${USER_AGENT}" \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -H 'x-api-key: '${APIKEY}'' \
+                -d '{ "attributes": { "sudo": { "enabled": '${admin}',"withoutPassword": false}}   , "op": "add", "type": "user","id": "'${userID}'"}' \
+                "https://console.jumpcloud.com/api/v2/systems/${systemID}/associations"
+        )
+
+        #Check and ensure user bound to system
+        userBindCheck=$(
+            curl -s \
+                -X 'GET' \
+                -A "${USER_AGENT}" \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -H 'x-api-key: '${APIKEY}'' \
+                "https://console.jumpcloud.com/api/v2/systems/${systemID}/associations?targets=user"
+        )
+    fi
 
     regex=''${userID}''
 
@@ -1005,7 +1119,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
     updateLog=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
 
-    Sleep 6
+    Sleep 5
 
     echo "Status: Configuring System Account" >>"$DEP_N_LOG"
 
@@ -1014,7 +1128,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     logoutTimeoutCounter='0'
 
     while [[ -z "${accountTakeOverCheck}" ]]; do
-        Sleep 6
+        Sleep 5
         updateLog=$(sed -n ''${logLines}',$p' /var/log/jcagent.log)
         accountTakeOverCheck=$(echo ${updateLog} | grep "User updates complete")
         logoutTimeoutCounter=$((${logoutTimeoutCounter} + 1))
@@ -1052,9 +1166,11 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
     sleep 10
     # steps:
     # hide enrollment users:
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Hiding Enrollment Users from Login Window" >>"$DEP_N_DEBUG"
     dscl . create /Users/$ENROLLMENT_USER IsHidden 1
     dscl . create /Users/$DECRYPT_USER IsHidden 1
     # logout of current user account
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): Trigger Force Logout of $ENROLLMENT_USER" >>"$DEP_N_DEBUG"
     launchctl bootout user/$(id -u $ENROLLMENT_USER)
 
     # add gate file here, user interaction complete
@@ -1075,9 +1191,21 @@ fi
 # until reboot, it will be not be called again after reboot.
 
 if [[ -f $DEP_N_GATE_DONE ]]; then
+    # get the systemID if it's null:
+    if [[ -z $systemID ]]; then
+        conf="$(cat /opt/jc/jcagent.conf)"
+        regex='\"systemKey\":\"[a-zA-Z0-9]{24}\"'
+        if [[ $conf =~ $regex ]]; then
+            systemKey="${BASH_REMATCH[@]}"
+        fi
+        regex='[a-zA-Z0-9]{24}'
+        if [[ $systemKey =~ $regex ]]; then
+            systemID="${BASH_REMATCH[@]}"
+        fi
+    fi
     # we still need to validate the API key variable here. If it's null attempt to get it
     if [[ -z $APIKEY ]]; then
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Credential set is null, decrypting..." >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Credential set is null, attempting to get API key again..." >>"$DEP_N_DEBUG"
         DECRYPT_USER_ID=$(dscl . -read /Users/$DECRYPT_USER | grep UniqueID | cut -d " " -f 2)
         # Gather OrgID
         conf="$(cat /opt/jc/jcagent.conf)"
@@ -1087,7 +1215,51 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
         fi
 
         ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
-        APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+        # Get ORG ID
+        if [[ -z $ORG_ID ]]; then
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ORGID Variable is missing" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Getting System Details with systemContext API" >>"$DEP_N_DEBUG"
+
+            # Get the current time.
+            now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+            # create the string to sign from the request-line and the date
+            signstr="GET /api/systems/${systemID} HTTP/1.1\ndate: ${now}"
+
+            # create the signature
+            signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+            # make the api call passing the signature in the authorization header
+            httpRequest=$(
+                curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                    -H "Accept: application/json" \
+                    -H "Date: ${now}" \
+                    -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                    --url https://console.jumpcloud.com/api/systems/${systemID}
+                )
+            # Check Response
+            responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+            if [[ $httpRequest != "200" ]]; then
+                # handle error
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+                # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+            else
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): System details returned successfully" >>"$DEP_N_DEBUG"
+                # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+                # Get ORGID
+                regexORG='\"organization\":\"([a-zA-Z0-9]{24})\"'
+                if [[ $responseContent =~ $regexORG ]]; then
+                    ORG_ID="${BASH_REMATCH[1]}"
+                fi
+                APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+            fi
+        fi
+        # check if we can validate the APIKEY (this may not be possible in case of a reboot)
+        if [[ -n $ENCRYPTED_KEY && -n $DECRYPT_USER_ID  && -n $ORG_ID ]]; then
+            APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
+        else
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): One of the required variables is null, script will progress and use the system context API Key" >>"$DEP_N_DEBUG"
+            SelfSignedRequest=true
+        fi
     fi
     # get the enrollment user if not there:
     if [[ -z $enrollmentUser ]]; then
@@ -1118,7 +1290,7 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
             stStatusResult="${BASH_REMATCH[1]}"
         fi
     fi
-    echo "$ACTIVE_USER ST Status: $stStatusResult"
+    echo "$(date "+%Y-%m-%d %H:%M:%S"): $ACTIVE_USER Secure Token Status: $stStatusResult" >>"$DEP_N_DEBUG"
     if [[ $stStatusResult == 'ENABLED' ]];then
         echo "$(date "+%Y-%m-%d %H:%M:%S"): $enrollmentUser has secure token" >>"$DEP_N_DEBUG"
     else
@@ -1127,31 +1299,126 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
 
     echo "Command: MainText: $FINISH_TEXT" >>"$DEP_N_LOG"
     # Remove from DEP_ENROLLMENT_GROUP and add to DEP_POST_ENROLLMENT_GROUP
-    removeGrp=$(
-    curl \
-        -X 'POST' \
-        -A "${USER_AGENT}" \
-        -H 'Content-Type: application/json' \
-        -H 'Accept: application/json' \
-        -H 'x-api-key: '${APIKEY}'' \
-        -d '{"op": "remove","type": "system","id": "'${systemID}'"}' \
-        "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members"
-    )
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): Removing Enrollment Group $removeGrp" >>"$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): Removed from DEP_ENROLLMENT_GROUP_ID: $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
-    addGrp=$(
-    curl \
-        -X 'POST' \
-        -A "${USER_AGENT}" \
-        -H 'Content-Type: application/json' \
-        -H 'Accept: application/json' \
-        -H 'x-api-key: '${APIKEY}'' \
-        -d '{"op": "add","type": "system","id": "'${systemID}'"}' \
-        "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_POST_ENROLLMENT_GROUP_ID}/members"
+    if [[ $SelfSignedRequest ]]; then
+        ## begin remove  from DEP_ENROLLMENT_GROUP
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Removing Enrollment Group $DEP_ENROLLMENT_GROUP_ID with systemContext API" >>"$DEP_N_DEBUG"
+        # make the api call passing the signature in the authorization header
+        # Get the current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
 
-    )
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): Adding to Post Enrollment Group $addGrp" >>"$DEP_N_DEBUG"
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): Added to from DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+        # create the string to sign from the request-line and the date
+        signstr="POST /api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -d "{\"op\" : \"remove\", \"type\" : \"system\", \"id\" : \"${systemID}\"}" \
+                -X "POST" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                --url https://console.jumpcloud.com/api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members
+        )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "204" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Removed from DEP_ENROLLMENT_GROUP_ID: $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        fi
+        ## End remove from DEP_ENROLLMENT_GROUP
+
+        ## Begin add to DEP_POST_ENROLLMENT_GROUP
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Removing Enrollment Group $DEP_POST_ENROLLMENT_GROUP_ID with systemContext API" >>"$DEP_N_DEBUG"
+        # make the api call passing the signature in the authorization header
+        # Get the current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+
+        # create the string to sign from the request-line and the date
+        signstr="POST /api/v2/systemgroups/${DEP_POST_ENROLLMENT_GROUP_ID}/members HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -d "{\"op\" : \"add\", \"type\" : \"system\", \"id\" : \"${systemID}\"}" \
+                -X "POST" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                --url https://console.jumpcloud.com/api/v2/systemgroups/${DEP_POST_ENROLLMENT_GROUP_ID}/members
+        )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "204" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Added to DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        fi
+        ## End  add to DEP_POST_ENROLLMENT_GROUP
+    else
+        ## begin remove  from DEP_ENROLLMENT_GROUP
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Removing Enrollment Group $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -X 'POST' \
+                -A "${USER_AGENT}" \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                -H 'x-api-key: '${APIKEY}'' \
+                -d '{"op": "remove","type": "system","id": "'${systemID}'"}' \
+                "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_ENROLLMENT_GROUP_ID}/members"
+        )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "204" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Removed from DEP_ENROLLMENT_GROUP_ID: $DEP_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        fi
+        ## End remove from DEP_ENROLLMENT_GROUP
+
+        ## Begin add to DEP_POST_ENROLLMENT_GROUP
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Adding to Post Enrollment Group $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -X 'POST' \
+                -A "${USER_AGENT}" \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                -H 'x-api-key: '${APIKEY}'' \
+                -d '{"op": "add","type": "system","id": "'${systemID}'"}' \
+                "https://console.jumpcloud.com/api/v2/systemgroups/${DEP_POST_ENROLLMENT_GROUP_ID}/members"
+
+        )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "204" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Added to DEP_POST_ENROLLMENT_GROUP_ID: $DEP_POST_ENROLLMENT_GROUP_ID" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        fi
+        ## End  add to DEP_POST_ENROLLMENT_GROUP
+    fi
 
     # Get JCAgent.log to ensure user updates have been processes on the system
     logLinesRaw=$(wc -l /var/log/jcagent.log)
@@ -1235,25 +1502,66 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     fi
 
     # Check for system details and log user agent to JumpCloud
-    sysSearch=$(curl -X GET \
+    if [[ $SelfSignedRequest ]]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Getting System Details with systemContext API" >>"$DEP_N_DEBUG"
+        # Get the current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+
+        # create the string to sign from the request-line and the date
+        signstr="GET /api/systems/${systemID} HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                --url https://console.jumpcloud.com/api/systems/${systemID}
+            )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"):System details returned successfully" >>"$DEP_N_DEBUG"
+        fi
+    else
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Getting System Details" >>"$DEP_N_DEBUG"
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
                 -A "${USER_AGENT}" \
                 -H 'Accept: application/json' \
                 -H 'Content-Type: application/json' \
                 -H 'x-api-key: '${APIKEY}'' \
                 "https://console.jumpcloud.com/api/systems/${systemID}"
             )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): System details returned successfully" >>"$DEP_N_DEBUG"
+        fi
+    fi
 
     # Get details about the current system, log details
     regexSerial='("serialNumber":")([^"]*)(",)'
     regexName='("hostname":")([^"]*)(",)'
     regexServAcct='("hasServiceAccount":)([^"]*)(,)'
-    if [[ $sysSearch =~ $regexSerial ]]; then
+    if [[ $responseContent =~ $regexSerial ]]; then
         sysSearchRawSerial="${BASH_REMATCH[2]}"
     fi
-    if [[ $sysSearch =~ $regexName ]]; then
+    if [[ $responseContent =~ $regexName ]]; then
         sysSearchRawName="${BASH_REMATCH[2]}"
     fi
-    if [[ $sysSearch =~ $regexServAcct ]]; then
+    if [[ $responseContent =~ $regexServAcct ]]; then
         sysSearchRawServAcct="${BASH_REMATCH[2]}"
     fi
 
@@ -1264,28 +1572,6 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Hostname: $sysSearchRawName" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud Service Account Status: $sysSearchRawServAcct" >>"$DEP_N_DEBUG"
     echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-
-    # User Agent Report
-    SETTINGS=$(curl \
-        -s \
-        -X GET https://console.jumpcloud.com/api/settings \
-        -A "${USER_AGENT}" \
-        -H "Accept: application/json" \
-        -H "Content-Type: application/json" \
-        -H "x-api-key: ${JCAPI_KEY}"
-    )
-    REGEX='\"ORG_ID\":\"([a-zA-Z0-9_]+)\"'
-    if [[ ${SETTINGS} =~ $REGEX ]]; then
-        ORG_ID="${BASH_REMATCH[1]}"
-    fi
-    #echo "${ORG_ID}"
-    curl \
-        -s \
-        -X PUT https://console.jumpcloud.com/api/organizations/${ORG_ID} \
-        -A "${USER_AGENT}" \
-        -H "Accept: application/json" \
-        -H "Content-Type: application/json" \
-        -H "x-api-key: ${JCAPI_KEY}"
 
     FINISH_TITLE="All Done"
 
@@ -1305,21 +1591,152 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
             echo "$(date "+%Y-%m-%d %H:%M:%S"): $FINDER_PROCESS" >>"$DEP_N_DEBUG"
             while [ "$FINDER_PROCESS" != "" ]; do
                 echo "$(date "+%Y-%m-%d %H:%M:%S"): Finder process found. Waiting until session end" >>"$DEP_N_DEBUG"
-                sleep 1
+                sleep 10
                 FINDER_PROCESS=$(pgrep -l "Finder")
             done
         fi
-        # given the case that the enrollment user was logged in previously, recheck the active user
-        ACTIVE_USER=$( ls -l /dev/console | awk '{print $3}' )
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Logged in user is: ${ACTIVE_USER}" >>"$DEP_N_DEBUG"
-        if [[ "${ACTIVE_USER}" == "" || "${ACTIVE_USER}" != "${ENROLLMENT_USER}" ]]; then
-            # delete the enrollment and decrypt user
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the first enrollment user: $ENROLLMENT_USER" >>"$DEP_N_DEBUG"
-            sysadminctl -deleteUser $ENROLLMENT_USER >>"$DEP_N_DEBUG" 2>&1
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): Deleting the decrypt user: $DECRYPT_USER" >>"$DEP_N_DEBUG"
-            sysadminctl -deleteUser $DECRYPT_USER >>"$DEP_N_DEBUG" 2>&1
+        # delete the enrollment and decrypt user
+        ## Begin Invoke Command to Remove Enrollment user
+        commandString='#!/bin/bash\n sysadminctl -deleteUser '"'$ENROLLMENT_USER'"'\n sysadminctl -deleteUser '"'$DECRYPT_USER'"''
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): creating command" >>"$DEP_N_DEBUG"
+        cmdCreateRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+            -X POST \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: $APIKEY" \
+            -d '{"name":"'"MDM Presage User Enrollment: $systemID"'", "command":"'"$commandString"'", "user":"000000000000000000000000", "commandType":"mac", "timeout":"120"}' \
+            --url https://console.jumpcloud.com/api/commands/
+        )
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $cmdCreateRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            # Get CommandID:
+            regexCommandID='\"_id\":\"([a-zA-Z0-9]{24})\"'
+            if [[ $responseContent =~ $regexCommandID ]]; then
+                commandID="${BASH_REMATCH[1]}"
+            fi
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Command created successfully with ID $commandID" >>"$DEP_N_DEBUG"
         fi
+        ## End Create Command
 
+        ## Begin Run Command
+        cmdRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+            -X POST \
+            -H 'content-type: application/json' \
+            -H "x-api-key: $APIKEY" \
+            -d '{"_id":"'"$commandID"'","systemIds":["'"$systemID"'"]}' \
+            --url https://console.jumpcloud.com/api/runCommand
+        )
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $cmdRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            regexResponseWorkflowID='\"workflowInstanceId\":\"([a-zA-Z0-9]{24})\"'
+            if [[ $responseContent =~ $regexResponseWorkflowID ]]; then
+                responseWorkflowID="${BASH_REMATCH[1]}"
+            fi
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Command ran with workflowID $responseWorkflowID" >>"$DEP_N_DEBUG"
+        fi
+        ## End Run Command
+        ## Begin wait for command results
+        totalCount='0'
+        ResultTimeoutCounter='0'
+        while [[ $totalCount == '0' ]]; do
+            # now get the command result
+            cmdResultRequest=$(
+                curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -X POST \
+                -H 'content-type: application/json' \
+                -H "x-api-key: $APIKEY" \
+                -d '{"filter": {"and": [ "'"workflowId:eq:$commandID"'", "'"workflowInstanceId:eq:$responseWorkflowID"'"]}}' \
+                --url https://console.jumpcloud.com/api/search/commandresults
+            )
+            commandResponseContent=$(cat $DEP_N_HTTP_RESPONSE)
+            if [[ $cmdResultRequest != "200" ]]; then
+                # handle error
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            else
+                ## Update Exit Code Variable
+                regexTotalCount='\"totalCount\":([0-9]{1})'
+                if [[ $commandResponseContent =~ $regexTotalCount ]]; then
+                    totalCount="${BASH_REMATCH[1]}"
+                fi
+                ## Log command result count (should be 1 after its run):
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): command results found: $totalCount" >>"$DEP_N_DEBUG"
+            fi
+
+            # If no command results are found, wait
+            if [[ $totalCount == '0' ]]; then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Expected command result not found, waiting 10s..." >>"$DEP_N_DEBUG"
+                ResultTimeoutCounter=$((${ResultTimeoutCounter} + 1))
+                sleep 10
+            fi
+            if [[ $ResultTimeoutCounter -eq 24 ]]; then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): Error during JumpCloud Command Result Lookup" >>"$DEP_N_DEBUG"
+                break
+            fi
+        done
+
+        ## End Wait for command results
+        ## Begin parse results
+        err='Error'
+        # err='Error:-[0-9]+'
+        if [[ $commandResponseContent =~ $err ]]; then
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [ERROR] sysadminctl encountered a general error, the $user1 && $user2 users may not be deleted from the system" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): The following errors were returned when attempting to delete the users:" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ################################  Error Details ################################" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): $commandResponseContent" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ################################################################################" >>"$DEP_N_DEBUG"
+        fi
+        errorNF='not found'
+        # errorNF='User \w+ not found'
+        if [[ $commandResponseContent =~ $errorNF ]]; then
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [ERROR] sysadminctl encountered a user not found error, the $user1 && $user2 users may not be deleted from the system" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): The following errors were returned when attempting to delete the users:" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ################################  Error Details ################################" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): $commandResponseContent" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): ################################################################################" >>"$DEP_N_DEBUG"
+        fi
+        ## end parse results
+
+        ## delete Command:
+        cmdCreateRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+            -X DELETE \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "x-api-key: $APIKEY" \
+                --url https://console.jumpcloud.com/api/commands/$commandID
+        )
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $cmdCreateRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Command used to trigger the user cleanup was removed" >>"$DEP_N_DEBUG"
+        fi
+        # Wait 10 seconds for user tables to update
+        sleep 10
+        function validateUser() {
+            userStatus=$([[ -n $(id -u "$1" 2>/dev/null) ]] && echo 1 || echo 0);
+            if [[ $userStatus == 0 ]];then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): User: $1 has been removed from system" >>"$DEP_N_DEBUG"
+            else
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): [ERROR] User: $1 was not removed from system" >>"$DEP_N_DEBUG"
+            fi
+        }
+        # Validate that the users were removed from the system
+        validateUser "$ENROLLMENT_USER"
+        validateUser "$DECRYPT_USER"
+        ## End Invoke Command to Remove Enrollment user
     fi
     # Clean up steps
     echo "$(date "+%Y-%m-%d %H:%M:%S"): Status: Removing LaunchDaemon" >>"$DEP_N_DEBUG"
