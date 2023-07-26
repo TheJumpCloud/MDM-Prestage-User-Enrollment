@@ -179,15 +179,8 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
 
     # Install DEPNotify
     curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
-    DEPNotifyInstall=$(installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /)
-    # retry if not successful
-    while ! [[ $DEPNotifyInstall =~ 'was successful' ]]; do
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying DEPNotify Download" >>"$DEP_N_DEBUG"
-        curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying DEPNotify Install" >>"$DEP_N_DEBUG"
-        DEPNotifyInstall=$(installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /)
-    done
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): DEPNotify Installed" >>"$DEP_N_DEBUG"
+    installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /
+
     # Create DEPNotify log files
     touch "$DEP_N_DEBUG"
     touch "$DEP_N_LOG"
@@ -272,16 +265,7 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
 EOF
     # Installs JumpCloud agent
     echo "$(date "+%Y-%m-%d %H:%M:%S"): User $ACTIVE_USER is logged in, installing JC" >>"$DEP_N_DEBUG"
-    JumpCloudInstall=$(installer -pkg /tmp/jumpcloud-agent.pkg -target /)
-
-    # retry if not successful
-    while ! [[ $JumpCloudInstall =~ 'was successful' ]]; do
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying JumpCloud Download" >>"$DEP_N_DEBUG"
-            curl --silent --output /tmp/jumpcloud-agent.pkg "https://cdn02.jumpcloud.com/production/jumpcloud-agent.pkg" >/dev/null
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Retrying JumpCloud Install" >>"$DEP_N_DEBUG"
-            JumpCloudInstall=$(installer -pkg /tmp/jumpcloud-agent.pkg -target /)
-    done
-    echo "$(date "+%Y-%m-%d %H:%M:%S"): JumpCloud Installed" >>"$DEP_N_DEBUG"
+    installer -pkg /tmp/jumpcloud-agent.pkg -target /
 
     # Validate JumpCloud agent install
     JCAgentConfPath='/opt/jc/jcagent.conf'
@@ -566,13 +550,13 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
         echo "$(date "+%Y-%m-%d %H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Performing Search with the following parameters: " >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): Activate status: $sec" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): User activation status: $sec" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): Using Secret: $injection" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
         echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
         userSearch=$(
-            curl \
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
                 -X 'POST' \
                 -A "${USER_AGENT}" \
                 -H 'Content-Type: application/json' \
@@ -581,15 +565,26 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 -d '{"filter":[{'$sec','$injection''${id_type}':"'${CompanyEmail}'"}],"fields":["username"]}' \
                 "https://console.jumpcloud.com/api/search/systemusers"
         )
+        userSearchResponse=$(cat $DEP_N_HTTP_RESPONSE)
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): User search returned the following:" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+        if [[ $userSearch != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $userSearchResponse" >>"$DEP_N_DEBUG"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response Code: $userSearch" >>"$DEP_N_DEBUG"
+        fi
         #debug
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USER SEARCH $userSearch" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $userSearchResponse" >>"$DEP_N_DEBUG"
         regex='totalCount"*.*,"results"'
-        if [[ $userSearch =~ $regex ]]; then
+        if [[ $userSearchResponse =~ $regex ]]; then
             userSearchRaw="${BASH_REMATCH[@]}"
         fi
         #debug
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
         totalCount=$(echo $userSearchRaw | cut -d ":" -f2 | cut -d "," -f1)
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Total Count: $totalCount" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
 
         sleep 1
 
@@ -603,7 +598,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             echo "$(date "+%Y-%m-%d %H:%M:%S"): User: $CompanyEmail entered information." >>"$DEP_N_DEBUG"
             echo "$(date "+%Y-%m-%d %H:%M:%S"): Performing Search with the following parameters: " >>"$DEP_N_DEBUG"
             echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): Activate status (should differ from): $sec" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): User activation status: $sec" >>"$DEP_N_DEBUG"
             echo "$(date "+%Y-%m-%d %H:%M:%S"): Using Secret: $injection" >>"$DEP_N_DEBUG"
             echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Type: $id_type" >>"$DEP_N_DEBUG"
             echo "$(date "+%Y-%m-%d %H:%M:%S"): ID Value: $CompanyEmail" >>"$DEP_N_DEBUG"
@@ -611,7 +606,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
             # rerun the search:
             userSearch=$(
-                curl -s \
+                curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
                     -X 'POST' \
                     -A "${USER_AGENT}" \
                     -H 'Content-Type: application/json' \
@@ -620,13 +615,25 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                     -d '{"filter":[{'$sec','$injection''${id_type}':"'${CompanyEmail}'"}],"fields":["username"]}' \
                     "https://console.jumpcloud.com/api/search/systemusers"
             )
+            userSearchResponse=$(cat $DEP_N_HTTP_RESPONSE)
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): User search returned the following:" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
+            if [[ $userSearch != "200" ]]; then
+                # handle error
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent" >>"$DEP_N_DEBUG"
+            else
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response Code: $userSearch" >>"$DEP_N_DEBUG"
+            fi
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $userSearchResponse" >>"$DEP_N_DEBUG"
             regex='totalCount"*.*,"results"'
-            if [[ $userSearch =~ $regex ]]; then
+            if [[ $userSearchResponse =~ $regex ]]; then
                 userSearchRaw="${BASH_REMATCH[@]}"
             fi
             #debug
-            echo "$(date "+%Y-%m-%d %H:%M:%S"): DEBUG USER SEARCH $userSearchRaw" >>"$DEP_N_DEBUG"
             totalCount=$(echo $userSearchRaw | cut -d ":" -f2 | cut -d "," -f1)
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): Total Count: $totalCount" >>"$DEP_N_DEBUG"
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): =================================================" >>"$DEP_N_DEBUG"
         fi
 
         # success criteria
@@ -635,11 +642,11 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             LOCATED_ACCOUNT='True'
             # Get the username from JumpCloud User Search
             regex='\"username\":\"([^\"]*)'
-            if [[ $userSearch =~ $regex ]]; then
+            if [[ $userSearchResponse =~ $regex ]]; then
                 usernameMatch="${BASH_REMATCH[1]}"
             fi
             regex='\"systemUsername\":\"([^\"]*)'
-            if [[ $userSearch =~ $regex ]]; then
+            if [[ $userSearchResponse =~ $regex ]]; then
                 systemUsernameMatch="${BASH_REMATCH[1]}"
             fi
 
@@ -701,7 +708,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
     # Capture userID
     regex='[a-zA-Z0-9]{24}'
-    if [[ $userSearch =~ $regex ]]; then
+    if [[ $userSearchResponse =~ $regex ]]; then
         # determine cases
         if [[ $SELF_PASSWD == true ]]; then
             pass_path="update_required"
@@ -743,7 +750,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
 
         WINDOW_TITLE='Set a password'
         PASSWORD_TITLE="Please set a password"
-        PASSWORD_TEXT='Your password must be 8 characters long and contain at least one number, upper case character, lower case character, and special character. \n The longer the better!'
+        PASSWORD_TEXT="Your password must be $minlength characters long and contain at least one number, upper case character, lower case character, and special character. \n The longer the better!"
 
         echo "Command: QuitKey: x" >>"$DEP_N_LOG"
         echo "Command: WindowTitle: $WINDOW_TITLE" >>"$DEP_N_LOG"
@@ -767,7 +774,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
             password=$(launchctl asuser "$uid" /usr/bin/osascript -e '
             Tell application "System Events"
                 with timeout of 1800 seconds
-                    display dialog "PASSWORD COMPLEXITY REQUIREMENTS:\n--------------------------------------------------------------\n * At least 8 characters long \n * Have at least 1 lowercase character \n * Have at least 1 uppercase character \n * Have at least 1 number \n * Have at least 1 special character'"$COMPLEXITY"'" with title "CREATE A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result 
+                    display dialog "PASSWORD COMPLEXITY REQUIREMENTS:\n--------------------------------------------------------------\n * At least '"$minlength"' characters long \n * Have at least 1 lowercase character \n * Have at least 1 uppercase character \n * Have at least 1 number \n * Have at least 1 special character'"$COMPLEXITY"'" with title "CREATE A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result
                 end timeout
             end tell' 2>/dev/null)
             # Length check
@@ -841,7 +848,7 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
                 passwordMatch=$(launchctl asuser "$uid" /usr/bin/osascript -e '
                 Tell application "System Events"
                     with timeout of 1800 seconds
-                        display dialog "CONFIRM PASSWORD:\n--------------------------------------------------------------\n" with title "CONFIRM A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result 
+                        display dialog "CONFIRM PASSWORD:\n--------------------------------------------------------------\n" with title "CONFIRM A SECURE PASSWORD"  buttons {"Continue"} default button "Continue" with hidden answer default answer ""' -e 'text returned of result
                     end timeout
                 end tell' 2>/dev/null)
 
@@ -1023,7 +1030,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
         # make the api call passing the signature in the authorization header
         httpRequest=$(
-            curl -s -o /var/tmp/response.txt -w "%{http_code}" \
+            curl -s -o $dep_n_http_response -w "%{http_code}" \
                 -X "POST" \
                 -A "${USER_AGENT}" \
                 -H "Content-Type: application/json" \
@@ -1052,7 +1059,7 @@ if [[ ! -f $DEP_N_GATE_DONE ]]; then
 
         # make the api call passing the signature in the authorization header
         httpRequest=$(
-            curl -s -o /var/tmp/response.txt -w "%{http_code}" \
+            curl -s -o $dep_n_http_response -w "%{http_code}" \
                 -X "GET" \
                 -A "${USER_AGENT}" \
                 -H "Content-Type: application/json" \
@@ -1724,7 +1731,8 @@ if [[ -f $DEP_N_GATE_DONE ]]; then
             echo "$(date "+%Y-%m-%d %H:%M:%S"): Command used to trigger the user cleanup was removed" >>"$DEP_N_DEBUG"
         fi
         # Wait 10 seconds for user tables to update
-        sleep 10
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Wait 30s" >>"$DEP_N_DEBUG"
+        sleep 30
         function validateUser() {
             userStatus=$([[ -n $(id -u "$1" 2>/dev/null) ]] && echo 1 || echo 0);
             if [[ $userStatus == 0 ]];then
