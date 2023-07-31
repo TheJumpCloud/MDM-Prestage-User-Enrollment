@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.1.9
+
+### RELEASE DATE
+
+July 27, 2023
+
+#### RELEASE NOTES
+
+A change in the JumpCloud agent has affected how the MDM Prestage User Enrollment script completes it's enrollment. The JumpCloud Agent now requires that at least one Secure Token decorated user on a system exists. If the last Secure Token decorated user is unbound from the device, the user will persist and not be disabled to prevent scenarios where no Secure Token users are able to login. This change prevented the automatic logout of the Enrollment (Welcome) user. The Enrollment user was the last Secure Token user on the system.
+
+This version of the script changes the order in which the enrollment users (Welcome and Decrypt) are removed from the system. Instead of forcefully removing the users before the new user logs in. The script will prompt the user to login with their new account, forcefully log the enrollment user off, and wait until the new user has been granted Secure Token (which occurs on login authentication) before removing the enrollment users from the system.
+
+This version of the tool introduces a new mechanism for removing the enrollment users. A command is created in the JumpCloud organization and is scheduled to remove the enrollment users after the Zero Touch user logs in for the first time.
+
 ## 3.1.8
 
 ### RELEASE DATE
