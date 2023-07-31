@@ -4,7 +4,7 @@
 
 ### RELEASE DATE
 
-July 27, 2023
+July 31, 2023
 
 #### RELEASE NOTES
 
