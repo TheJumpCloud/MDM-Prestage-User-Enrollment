@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.10
+
+### RELEASE DATE
+
+Aug 02, 2024
+
+#### RELEASE NOTES
+
+Additional logging added to the enrollment script, to identify cases where the APIKey was decrypted incorrectly.
+
 ## 3.1.9
 
 ### RELEASE DATE
