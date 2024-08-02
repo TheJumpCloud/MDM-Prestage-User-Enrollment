@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.9 | See the CHANGELOG.md for version information
+#       Version 3.1.10 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -103,16 +103,16 @@ SELF_PASSWD=false
 #-------------------------------------------------------------------------------
 
 # Used to create $ENCRYPTED_KEY
+# Usage: EncryptKey "API_KEY" "DECRYPT_USER_UID" "ORG_ID"
 function EncryptKey() {
-    # Usage: EncryptKey "API_KEY" "DECRYPT_USER_UID" "ORG_ID"
     local ENCRYPTION_KEY=${2}${3}
     local ENCRYPTED_KEY=$(echo "${1}" | /usr/bin/openssl enc -e -base64 -A -aes-128-ctr -md md5 -nopad -nosalt -k ${ENCRYPTION_KEY})
     echo "Encrypted key: ${ENCRYPTED_KEY}"
 }
 
 # Used to decrypt $ENCRYPTED_KEY
+# Usage: DecryptKey "ENCRYPTED_KEY" "DECRYPT_USER_UID" "ORG_ID"
 function DecryptKey() {
-    # Usage: DecryptKey "ENCRYPTED_KEY" "DECRYPT_USER_UID" "ORG_ID"
     echo "${1}" | /usr/bin/openssl enc -d -base64 -aes-128-ctr -md md5 -nopad -A -nosalt -k "${2}${3}"
 }
 
@@ -161,7 +161,7 @@ MacOSPatchVersion=$(sw_vers -productVersion | cut -d '.' -f 3)
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.9"
+VERSION="3.1.10"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -477,9 +477,18 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     fi
 
     ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
+    if [ ${#orgID} -eq 24 ]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): orgID is the correct length" >>"$DEP_N_DEBUG"
+    else 
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): orgID is not the correct length: ${#orgID}" >>"$DEP_N_DEBUG"
+    fi
 
     APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
-
+    if [ ${#APIKEY} -eq 40 ]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): APIKey is the correct length" >>"$DEP_N_DEBUG"
+    else 
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): APIKey is not the correct length: ${#APIKEY}" >>"$DEP_N_DEBUG"
+    fi
     ###
     # Recapture these variables - necessary if the system was restarted
     DEP_N_USER_INPUT_PLIST="/Users/$ACTIVE_USER/Library/Preferences/menu.nomad.DEPNotifyUserInput.plist"
