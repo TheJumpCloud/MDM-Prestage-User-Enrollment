@@ -477,10 +477,48 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     fi
 
     ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
-    if [ ${#orgID} -eq 24 ]; then
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): orgID is the correct length" >>"$DEP_N_DEBUG"
+    if [ ${#ORG_ID} -eq 24 ]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is the correct length" >>"$DEP_N_DEBUG"
     else 
-        echo "$(date "+%Y-%m-%d %H:%M:%S"): orgID is not the correct length: ${#orgID}" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is not the correct length: ${#ORG_ID}" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Getting System Details with systemContext API" >>"$DEP_N_DEBUG"
+        # Get the current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+        # create the string to sign from the request-line and the date
+        signstr="GET /api/systems/${systemID} HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                --url https://console.jumpcloud.com/api/systems/${systemID}
+            )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): System details returned successfully" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+            # Get ORGID
+            regexORG='\"organization\":\"([a-zA-Z0-9]{24})\"'
+            if [[ $responseContent =~ $regexORG ]]; then
+                ORG_ID="${BASH_REMATCH[1]}"
+            fi
+            if [ ${#ORG_ID} -eq 24 ]; then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is the correct length" >>"$DEP_N_DEBUG"
+            else
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is not the correct length: ${#ORG_ID}" >>"$DEP_N_DEBUG"
+            fi
+        fi
+    
     fi
 
     APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
