@@ -2,7 +2,7 @@
 
 #*******************************************************************************
 #
-#       Version 3.1.9 | See the CHANGELOG.md for version information
+#       Version 3.1.10 | See the CHANGELOG.md for version information
 #
 #       See the ReadMe file for detailed configuration steps.
 #
@@ -103,16 +103,16 @@ SELF_PASSWD=false
 #-------------------------------------------------------------------------------
 
 # Used to create $ENCRYPTED_KEY
+# Usage: EncryptKey "API_KEY" "DECRYPT_USER_UID" "ORG_ID"
 function EncryptKey() {
-    # Usage: EncryptKey "API_KEY" "DECRYPT_USER_UID" "ORG_ID"
     local ENCRYPTION_KEY=${2}${3}
     local ENCRYPTED_KEY=$(echo "${1}" | /usr/bin/openssl enc -e -base64 -A -aes-128-ctr -md md5 -nopad -nosalt -k ${ENCRYPTION_KEY})
     echo "Encrypted key: ${ENCRYPTED_KEY}"
 }
 
 # Used to decrypt $ENCRYPTED_KEY
+# Usage: DecryptKey "ENCRYPTED_KEY" "DECRYPT_USER_UID" "ORG_ID"
 function DecryptKey() {
-    # Usage: DecryptKey "ENCRYPTED_KEY" "DECRYPT_USER_UID" "ORG_ID"
     echo "${1}" | /usr/bin/openssl enc -d -base64 -aes-128-ctr -md md5 -nopad -A -nosalt -k "${2}${3}"
 }
 
@@ -161,7 +161,7 @@ MacOSPatchVersion=$(sw_vers -productVersion | cut -d '.' -f 3)
 #*******************************************************************************
 
 CLIENT="mdm-zero-touch"
-VERSION="3.1.9"
+VERSION="3.1.10"
 USER_AGENT="JumpCloud_${CLIENT}/${VERSION}"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -477,9 +477,56 @@ if [[ ! -f $DEP_N_GATE_UI ]]; then
     fi
 
     ORG_ID=$(echo $ORG_ID_RAW | cut -d '"' -f 4)
+    if [ ${#ORG_ID} -eq 24 ]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is the correct length" >>"$DEP_N_DEBUG"
+    else 
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is not the correct length: ${#ORG_ID}" >>"$DEP_N_DEBUG"
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): Getting System Details with systemContext API" >>"$DEP_N_DEBUG"
+        # Get the current time.
+        now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+        # create the string to sign from the request-line and the date
+        signstr="GET /api/systems/${systemID} HTTP/1.1\ndate: ${now}"
+
+        # create the signature
+        signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n')
+
+        # make the api call passing the signature in the authorization header
+        httpRequest=$(
+            curl -s -o $DEP_N_HTTP_RESPONSE -w "%{http_code}" \
+                -H "Accept: application/json" \
+                -H "Date: ${now}" \
+                -H "Authorization: Signature keyId=\"system/${systemID}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${signature}\"" \
+                --url https://console.jumpcloud.com/api/systems/${systemID}
+            )
+        # Check Response
+        responseContent=$(cat $DEP_N_HTTP_RESPONSE)
+        if [[ $httpRequest != "200" ]]; then
+            # handle error
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): [error] HTTP Response does not indicate success" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+        else
+            echo "$(date "+%Y-%m-%d %H:%M:%S"): System details returned successfully" >>"$DEP_N_DEBUG"
+            # echo "$(date "+%Y-%m-%d %H:%M:%S"): HTTP Response: $responseContent"
+            # Get ORGID
+            regexORG='\"organization\":\"([a-zA-Z0-9]{24})\"'
+            if [[ $responseContent =~ $regexORG ]]; then
+                ORG_ID="${BASH_REMATCH[1]}"
+            fi
+            if [ ${#ORG_ID} -eq 24 ]; then
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is the correct length" >>"$DEP_N_DEBUG"
+            else
+                echo "$(date "+%Y-%m-%d %H:%M:%S"): ORG_ID is not the correct length: ${#ORG_ID}" >>"$DEP_N_DEBUG"
+            fi
+        fi
+    
+    fi
 
     APIKEY=$(DecryptKey $ENCRYPTED_KEY $DECRYPT_USER_ID $ORG_ID)
-
+    if [ ${#APIKEY} -eq 40 ]; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): APIKey is the correct length" >>"$DEP_N_DEBUG"
+    else 
+        echo "$(date "+%Y-%m-%d %H:%M:%S"): APIKey is not the correct length: ${#APIKEY}" >>"$DEP_N_DEBUG"
+    fi
     ###
     # Recapture these variables - necessary if the system was restarted
     DEP_N_USER_INPUT_PLIST="/Users/$ACTIVE_USER/Library/Preferences/menu.nomad.DEPNotifyUserInput.plist"
