@@ -178,7 +178,7 @@ if [[ ! -f $DEP_N_GATE_INSTALLJC ]]; then
     caffeinatePID=$!
 
     # Install DEPNotify
-    curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.nomad.menu/DEPNotify.pkg" >/dev/null
+    curl --silent --output /tmp/DEPNotify-1.1.6.pkg "https://files.jamfconnect.com/DEPNotify.pkg" >/dev/null
     installer -pkg /tmp/DEPNotify-1.1.6.pkg -target /
 
     # Create DEPNotify log files

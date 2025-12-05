@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.11
+
+### RELEASE DATE
+
+Dec 05, 2025
+
+#### RELEASE NOTES
+
+Updated the DEP URL to the correct URL.
+
 ## 3.1.10
 
 ### RELEASE DATE
